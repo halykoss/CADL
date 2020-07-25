@@ -1,30 +1,33 @@
-(** Modulo di OCaml per gli insiemi *)
+(** TODO: sistemare riga 29 
+    Modulo di OCaml per gli insiemi *)
 module SS = Set.Make(String);;
-(** Parametro usato dentro le() delle regole e delle Formule*)
+(** Parametro usato dentro le() delle regole e delle Formule *)
 type param = Name of string | Variable of string;;
-(** Lista di parametri definiti come sopra*)
+(** Lista di parametri definiti come sopra *)
 type paramList = ParamList of param * paramList | None;;
-(** Fomrula atomica*)
-type atom = Atom of string * paramList;;
+(** Fomrula atomica *)
+type atom = Atom of string * paramList | AddInCxt of string * string;;
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
-(** Lista di input (Regole o Formule)*)
+(** Lista di input (Regole o Formule) *)
 type input = Rule of atom * atomList * input | Formula of atom * input | None;;
 (** Mappe in cui conservo la rappresentazione di regole e fatti *)
 let formulas = Hashtbl.create 691;;
 let rules = Hashtbl.create 691;;
+let ctx = Hashtbl.create 691;;
 (** Analizzo un parametro e lo formatto *)
 let analyzeParam p = match p with
   Name s -> "\"" ^ s ^"\""
   | Variable s -> String.lowercase_ascii s;;
-(** Trasformo una lista di parametri da ricorsiva a lista di OCaml*)
+(** Trasformo una lista di parametri da ricorsiva a lista di OCaml *)
 let rec analyzeParamList pl = match pl with
   ParamList(p,ls) -> (p |> analyzeParam)::analyzeParamList ls
   | None -> []
 ;;
 (** Inizio l'analisi di una formula *)
 let analyzeFormula at = match at with
-  Atom(name, pl) ->  (name, analyzeParamList pl);;
+  Atom(name, pl) ->  (name, analyzeParamList pl)
+  | AddInCxt(name,value) -> (name,[]);;
 (** Aggungo una formula all'hm *)
 let addHashTableFormula h s c = match c with
  (d,e) -> let _ = Hashtbl.add h d e in SS.add d s;;
@@ -37,16 +40,21 @@ let rec analyzeAtomList al = match al with
  | None -> [];;
 (** Analizzo una regola e restituisco una tupla con nome, parametri di input e lista di formule associate per la veridicità*)
 let analyzeRule v rs = match v with
-  Atom(name,pl) -> (name,analyzeParamList pl,analyzeAtomList rs);;
+  Atom(name,pl) -> (name,analyzeParamList pl,analyzeAtomList rs)
+  | _ -> failwith("non riconosciuto");;
 (** Inizio l'analisi dell'input, restituisco due insieme (uno contiene le formule, l'altro le regole) *)
 let rec analyzeInput a = match a with
   Formula(c,d) -> let (s,t) = analyzeInput d in (analyzeFormula c |> addHashTableFormula formulas s ,t)
-  | Rule(c,d,e) -> let (s,t) = analyzeInput e in (s, analyzeRule c d |> addHashTableRule rules t)
+  | Rule(c,d,e) -> (
+    match c with 
+      Atom(_,_) -> let (s,t) = analyzeInput e in (s, analyzeRule c d |> addHashTableRule rules t)
+      |AddInCxt(key,value) -> let () =  (Hashtbl.add ctx key value) in analyzeInput e
+    )
   | None ->  (SS.empty,SS.empty);;
 (** AST di prova *)
 let value = Formula(
   (* queen(elizabethII) *)
-  Atom("queen",ParamList(Name("elizabethII"),None)),
+  AddInCxt("prova","ciao"),
   (* queen(Victoria) *)
   Formula(
     Atom("queen",ParamList(Name("Victoria"),None)),
@@ -58,7 +66,7 @@ let value = Formula(
           Atom("mother",ParamList(Name("elizabethII"),ParamList(Name("charles"),None))),
           Rule(
             (** british(X) :- queen(X) *)
-            Atom("british",ParamList(Variable("X"),None)),
+            AddInCxt("british","type"),
             AtomList(Atom("queen",ParamList(Variable("X"),None)),
               None),
             (** king(X) :- mother(elizabethII,X), firstMale(X) *)
@@ -114,11 +122,13 @@ let iter_rules v = Hashtbl.find_all rules v |> print_func v |> Printf.printf "%s
 (***)
 (***)
 (***)
-(** In a ho le formule e in b le regole*)
+(** In a ho le formule e in b le regole *)
 (***)
 (***)
 (***)
 let (a,b) = analyzeInput value;;
+"type ctxVal = CtxVal of string | None;;\n\nlet ctx = [ " |> print_endline;;
+Hashtbl.fold (fun k v bo ->  "(\""^k ^"\",\"" ^ v ^ "\")" ^ ";\n" ^ bo  ) ctx "];;\n" |> print_endline;;
 SS.iter iter_formulas a;;
 SS.iter iter_rules b;;
 exit(0);;
