@@ -1,0 +1,7 @@
+@add(x,Bool)
+@add(y,Integer)
+equal(Bool,Bool)
+equal(Integer,Integer)
+tvar(X,T) :- @member(X,T)
+tabs(V,T,U) :- @head(V,T),@tail(V,U)
+tapp(VI,VII,T,U) :- equal(VII,T), @head(VI,T), @tail(VI,U)
