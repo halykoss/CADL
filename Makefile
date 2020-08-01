@@ -17,7 +17,7 @@ build:
 clean:
 	$(BS) clean
 	rm -f lib/lexer.ml lib/parser.ml lib/parser.mli *.txt $(OFILE)
-tests:
+ounit:
 	$(BS) runtest
 
 exec:

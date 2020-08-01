@@ -16,8 +16,8 @@ let tail_text =  "let matchTailType tuple = let (exp,value) = tuple in match exp
 let print_ctx k v bo = "(" ^k ^", " ^ v ^ ");\n" ^ bo;;
 let print_type a b = a ^ " | " ^  b;;
         let _ =
+          let lexbuf = Lexing.from_channel stdin in
           try 
-            let lexbuf = Lexing.from_channel stdin in
                 let result = Parser.main Lexer.token lexbuf in
                   let (a,b) = Grammar.analyzeInput result in 
                   "type typed = " ^ (List.fold_right print_type (Hashtbl.find_all Grammar.newTypes "type") "Lambda of typed * typed | None;;\n")   |> print_endline;
@@ -28,5 +28,10 @@ let print_type a b = a ^ " | " ^  b;;
                   SS.iter Grammar.iter_rules b;
                     print_newline();
                     flush stdout; 
-          with Lexer.Eof ->
+          with 
+          Lexer.LexerException ->
             exit 0
+          | Stdlib.Parsing.Parse_error -> 
+            Lexer.print_error "error" lexbuf ;
+            exit 0
+          

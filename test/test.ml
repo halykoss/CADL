@@ -1,13 +1,23 @@
 open OUnit2
 
-let rec sum = function
-  | []    -> 0
-  | x::xs -> x + sum xs
+let empty_list = []
+let list_a = [1;2;3]
 
-let tests = "test suite for sum" >::: [
-  "empty"  >:: (fun _ -> assert_equal 0 (sum []));
-  "one"    >:: (fun _ -> assert_equal 1 (sum [1]));
-  "onetwo" >:: (fun _ -> assert_equal 3 (sum [1; 2]));
-]
+let test_list_length _ =
+  (* Check if the list is empty. *)
+  assert_equal 0 (List.length empty_list);
+  (* Check if a given list contains 3 elements. *)
+  assert_equal 3 (List.length list_a)
 
-let _ = run_test_tt_main tests
+let test_list_append _ =
+  let list_b = List.append empty_list [1;2;3] in
+  assert_equal list_b list_a
+
+let suite =
+  "ExampleTestList" >::: [
+    "test_list_length" >:: test_list_length;
+    "test_list_append" >:: test_list_append
+  ]
+
+let () =
+  run_test_tt_main suite

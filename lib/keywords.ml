@@ -1,8 +1,8 @@
 
 let keywords word = match word with
-  "@add" -> Parser.ADDCTX
-  | "@member" -> Parser.MEMBER
-  | "@update" -> Parser.UPDATECTX
-  | "@head" -> Parser.HEAD
-  | "@tail" -> Parser.TAIL
+  "@Add" -> Parser.ADDCTX
+  | "@Member" -> Parser.MEMBER
+  | "@Update" -> Parser.UPDATECTX
+  | "@Head" -> Parser.HEAD
+  | "@Tail" -> Parser.TAIL
   |  _ -> failwith("Errore nel token");
