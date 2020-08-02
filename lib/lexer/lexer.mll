@@ -1,7 +1,6 @@
   (* File lexer.mll *)
         {
         open Parser        (* The type token is defined in parser.mli *)
-        open Keywords
         exception LexerException
         (* La riga a cui mi trovo*)
         let num_lines = ref 0
@@ -32,7 +31,7 @@
         rule token = parse
             [' ' '\t']     { token lexbuf }     (* skip blanks *)
           | ['\n' ]        { incr num_lines;line_start := (lexbuf |> Lexing.lexeme_end);EOL }
-          | ['@'] keywords as lxm { keywords lxm }
+          | ['@'] keywords as lxm { KEYWORD lxm }
           | id as lxm { MIN lxm }
           | keywords as lxm { TYPE lxm }
           | variable as lxm { CAP lxm }

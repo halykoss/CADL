@@ -1,14 +1,9 @@
         %{
           open Grammar
         %}      
-        %token <string> MIN CAP TYPE
+        %token <string> MIN CAP KEYWORD TYPE
         %token PLUS MINUS TIMES DIV
         %token LPAREN RPAREN
-        %token ADDCTX
-        %token UPDATECTX
-        %token MEMBER
-        %token HEAD
-        %token TAIL
         %token INFERENCE
         %token COMMA
         %token FUNCDEF
@@ -41,11 +36,7 @@
 
         atom:
             MIN LPAREN paramList RPAREN     { Atom($1,$3) }
-        |   ADDCTX LPAREN param COMMA param RPAREN { AddInCxt($3,$5) }
-        |   MEMBER LPAREN param COMMA param RPAREN { MemberCtx($3,$5) }
-        |   UPDATECTX LPAREN param COMMA param RPAREN { UpdateCtx($3,$5) }
-        |   HEAD LPAREN param COMMA param RPAREN { Head($3,$5) }
-        |   TAIL LPAREN param COMMA param RPAREN { Tail($3,$5) }
+        |   KEYWORD LPAREN param COMMA param RPAREN { Keywords.keywords $1 $3 $5 }
         ;
 
         paramList:
