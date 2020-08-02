@@ -32,6 +32,6 @@ let print_type a b = a ^ " | " ^  b;;
           Lexer.LexerException ->
             exit 0
           | Stdlib.Parsing.Parse_error -> 
-            Lexer.print_error "error" lexbuf ;
+            Lexer.print_error "error" "Parser" lexbuf ;
             exit 0
           

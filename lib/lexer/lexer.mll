@@ -12,9 +12,10 @@
           "\n" -> "EOS"
         | _ -> s
         (* Stampa il messaggio di errore*)
-        let print_error s lexbuf = Printf.fprintf 
+        let print_error s typerr lexbuf = Printf.fprintf 
               stderr 
-              "Parsing error:\n\n Unexpected \"%s\" (%d-%d) on line = %d \n" 
+              "%s error:\n\n Unexpected \"%s\" (%d-%d) on line = %d \n" 
+              typerr
               (if s = "error" then (lexbuf |> Lexing.lexeme |> matchError) else s) 
               ((lexbuf |> Lexing.lexeme_start) - !line_start) 
               ((lexbuf |> Lexing.lexeme_end) - !line_start) 
@@ -44,4 +45,4 @@
           | '('            { LPAREN }
           | ')'            { RPAREN }
           | eof            { EOF }
-          | _ as lxm       {  (lxm |> Printf.sprintf "%c" |> print_error) lexbuf; raise LexerException }
+          | _ as lxm       {  (lxm |> Printf.sprintf "%c" |> print_error) "Lexer" lexbuf; raise LexerException }
