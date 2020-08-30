@@ -1,7 +1,0 @@
-@Add(x,Bool)
-@Add(y,Integer)
-equal(Bool,Bool)
-equal(Integer,Integer)
-tvar(X,T) :- @Member(X,T)
-tabs(V,T,U) :- @Head(V,T),@Tail(V,U)
-tapp(V1,V2,T,U) :- equal(V2,T), @Head(V1,T), @Head(V1,V2), @Tail(V1,U)
