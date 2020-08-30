@@ -31,6 +31,8 @@ let rec getIndexTup istance = match istance with
   | (_ , _) -> failwith("Index Error");;
 *#
 
+@Context(type_env,C,t).
+
 @Compat(TypI, TypI).
 @Compat(TypUnit, TypUnit).
 @Compat(TypBool,TypBool).

@@ -3,4 +3,5 @@ open Grammar;;
 let num_lines = ref 0;;
 
 let keywords v1 v2 = match v1 with
+  "context" -> Context(v2)
   |  _ -> Keyword(v1,v2);;

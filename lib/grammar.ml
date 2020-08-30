@@ -5,7 +5,7 @@ and paramList = ParamList of param * paramList | NoneP;;
 (** Dichiarazione di nuovi tipi *)
 type declarationType = Declaration of param * paramList * declarationType | EndDecl;;
 (** Fomrula atomica *)
-type atom = Atom of string * paramList | Keyword of string * paramList;;
+type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList;;
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
 (** Lista di input (Regole, Formule, Codice Ocaml Embedded, nuovi tipi ) *)
@@ -71,6 +71,7 @@ let updateEvalPredicate v n = match v with
 let updateEvalFunction v n = match v with
   Function{rows = a} -> Function{rows = n::a}
   | _ -> failwith("Error");;
+  
 (** Cerca nell'AST le dichiarazioni di nuovi tipi e li compatta in una lista di Declaration *)
 let rec loop_types r = match r with 
   None -> EndDecl
@@ -83,7 +84,25 @@ let rec loop_types r = match r with
       Declaration(a,b,_) -> Declaration(a,b,next)
       | EndDecl -> EndDecl
     );;
-
+(** Stampa un nuovo contesto *)
+let printContext v2 =
+    let printParam v = match v with 
+    Name v1 -> v1
+    | Variable v1 ->  v1 
+    | TypeS v1 ->  v1
+    | _ -> failwith("Error")
+  in  match v2 with
+  ParamList(v,nxt) -> (
+    match nxt with 
+      ParamList(v1,nxt1) -> (
+        match nxt1 with 
+          ParamList(v2,_) -> "type " ^ printParam v ^ " = " ^ printParam v2 ^ " "^ printParam v1 ^"."^printParam v2 ^";;"
+          | NoneP -> failwith("Error")
+      )
+      | NoneP -> failwith("Error")
+  )
+  | NoneP -> failwith("Error")
+;;
 (** Prende in input l'AST e restuisce una mappa che associata al nome della regola una lista di coppie tuple => Lista di atomici (tuple sono i valori matchati in Ocaml e la lista di atomici le operazioni da fare) *)
 let rec loop_rules newTypes r = match r with 
   None -> Eval.empty
@@ -93,6 +112,7 @@ let rec loop_rules newTypes r = match r with
           let (lst, pl) = getLastParam d in 
             if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
         | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
+        | Context(v2) -> let _ = printContext v2 |> print_endline in m
       )
   | Rule(line,a,b,c) -> let m = loop_rules newTypes c in (
     match a with
@@ -100,6 +120,7 @@ let rec loop_rules newTypes r = match r with
       let (lst, pl) = getLastParam e in 
         if Eval.mem d m then Eval.add d (updateEvalFunction (Eval.find d m) (pl,b,lst,line)) m else Eval.add d (Function{rows = [(pl,b,lst,line)]}) m
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
+      | _ -> m
     )
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules newTypes n
   | DeclarationType(_,n) -> loop_rules newTypes n
@@ -134,11 +155,13 @@ let rec loop_rules newTypes r = match r with
         match v1 with 
           Atom(v3,v4) -> v3 ^ printTuple v4 
           | Keyword(v3,v4) -> v3 ^ printTuple v4
+          | _ -> failwith("Error")
       ) 
     | AtomList(v1,v2) -> (
         match v1 with 
           Atom(v3,v4) -> v3 ^ printTuple v4 ^ " && " ^ printResult v2
           | Keyword(v3,v4) -> v3 ^ printTuple v4 ^ " && " ^ printResult v2
+          | _ -> failwith("Error")
       ) 
     | None -> "true";;
   
@@ -156,6 +179,7 @@ let rec loop_rules newTypes r = match r with
              | Type(v1,v2) -> "( match " ^ name ^ " " ^ printTuple pl1 ^ " with " ^ v1 ^ " " ^ printTuple v2 ^ " -> " ^ printResultState nxt final ^ " | _ -> failwith(\"Error!\"))"
          )
      | Keyword(name,pl) -> "if " ^ name ^ " " ^ printTuple pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
+     | _ -> failwith("Error")
    )
    | None -> printParam final;; 
 
