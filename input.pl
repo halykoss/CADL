@@ -4,11 +4,9 @@ type name = Name.t;;
 
 module C = Map.Make(Name);;
 
-let member t = match t with 
-  (_C,x) -> C.find x _C;;
+let member _C x = C.find x _C;;
 
-let add t = match t with
-  (_C,x,t1) -> C.add x t1 _C;;
+let add _C x t1 = C.add x t1 _C;;
 
 let id value = value;;
 *#
@@ -25,9 +23,9 @@ t ::=  TypI | TypUnit |TypF(t, t) | TypTu(v) |TypList(t) | TypBool | TypRef(t).
 @PrintType.
 
 #*
-let rec getIndexTup istance = match istance with
+let rec getIndexTup key tup = match (key,tup) with
   | (0 , TypInnerTup(x,y)) -> x
-  | (idx,TypInnerTup(x,y)) -> getIndexTup ((idx - 1),y)
+  | (idx,TypInnerTup(x,y)) -> getIndexTup (idx - 1) y
   | (_ , _) -> failwith("Index Error");;
 *#
 

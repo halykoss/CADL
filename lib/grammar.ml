@@ -142,6 +142,22 @@ let rec loop_rules newTypes r = match r with
         "(" ^ printInnerTuple t
     ;;  
   
+    (** Stampa una tupla con i valori contenuti *)
+  let printParams t = 
+    let printParam v = match v with 
+      Name v1 ->  v1
+      | Variable v1 ->  "_" ^ v1 
+      | TypeS v1 -> v1
+      | Type(v1,v2) -> "(" ^ v1 ^ printTuple v2 ^ ")"
+  in
+    let rec printInnerTuple t2 = (match t2 with
+      ParamList(v1,NoneP) -> printParam v1 ^ printInnerTuple NoneP
+      | ParamList(v1,v2) -> printParam v1 ^ " " ^ printInnerTuple v2
+      | NoneP -> " ")
+  in 
+    " " ^ printInnerTuple t
+;;  
+
   (** Stampa un parametro *)
   let printParam v = match v with 
     Name v1 -> v1
@@ -153,14 +169,14 @@ let rec loop_rules newTypes r = match r with
   let rec printResult r = match r with
     AtomList(v1,None) -> (
         match v1 with 
-          Atom(v3,v4) -> v3 ^ printTuple v4 
-          | Keyword(v3,v4) -> v3 ^ printTuple v4
+          Atom(v3,v4) -> v3 ^ printParams v4 
+          | Keyword(v3,v4) -> v3 ^ printParams v4
           | _ -> failwith("Error")
       ) 
     | AtomList(v1,v2) -> (
         match v1 with 
-          Atom(v3,v4) -> v3 ^ printTuple v4 ^ " && " ^ printResult v2
-          | Keyword(v3,v4) -> v3 ^ printTuple v4 ^ " && " ^ printResult v2
+          Atom(v3,v4) -> v3 ^ printParams v4 ^ " && " ^ printResult v2
+          | Keyword(v3,v4) -> v3 ^ printParams v4 ^ " && " ^ printResult v2
           | _ -> failwith("Error")
       ) 
     | None -> "true";;
@@ -173,12 +189,12 @@ let rec loop_rules newTypes r = match r with
        let (lst, pl1) = getLastParam pl in 
          (
            match lst with 
-             Name v1 -> " let " ^ v1 ^ " = " ^ name ^ " " ^ printTuple pl1 ^ " in " ^ printResultState nxt final
-             | Variable v1 -> " let " ^ "_" ^ v1 ^ " = " ^ name ^ " " ^ printTuple pl1 ^ " in " ^ printResultState nxt final
-             | TypeS v1 ->  " let " ^ v1 ^ " = " ^ name ^ " " ^ printTuple pl1 ^ " in " ^ printResultState nxt final
-             | Type(v1,v2) -> "( match " ^ name ^ " " ^ printTuple pl1 ^ " with " ^ v1 ^ " " ^ printTuple v2 ^ " -> " ^ printResultState nxt final ^ " | _ -> failwith(\"Error!\"))"
+             Name v1 -> " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+             | Variable v1 -> " let " ^ "_" ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+             | TypeS v1 ->  " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+             | Type(v1,v2) -> "( match " ^ name ^ " " ^ printParams pl1 ^ " with " ^ v1 ^ " " ^ printTuple v2 ^ " -> " ^ printResultState nxt final ^ " | _ -> failwith(\"Error!\"))"
          )
-     | Keyword(name,pl) -> "if " ^ name ^ " " ^ printTuple pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
+     | Keyword(name,pl) -> "if " ^ name ^ " " ^ printParams pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
      | _ -> failwith("Error")
    )
    | None -> printParam final;; 
@@ -191,10 +207,54 @@ let rec loop_rules newTypes r = match r with
   let printNewRowFunction a b = match a with 
    (c,d,e,line) ->  "\n (** Line "^ (line |> string_of_int) ^" *) \n |  " ^ printTuple c ^ " -> " ^ printResultState d e ^ b;;
 
+  (* Stampa un'intestazione di funzione a partire da una lista di coppie a tre argomenti *)
+  let printListInput3args ls = 
+    let rec countParam p num = (
+      match p with 
+        ParamList(_,nxt) -> "_e"^ ( num |> string_of_int) ^ " " ^ countParam nxt (num + 1)
+        | NoneP -> "" 
+    ) in match ls with 
+    [] -> " "
+    | (c,_,_)::_ -> countParam c 0
+  ;;
+
+  (* Stampa un'intestazione di funzione a partire da una lista di coppie a quattro argomenti *)
+  let printListInput4args ls = 
+    let rec countParam p num = (
+      match p with 
+        ParamList(_,nxt) -> "_e"^ ( num |> string_of_int) ^ " " ^ countParam nxt (num + 1)
+        | NoneP -> "" 
+    ) in match ls with 
+    [] -> " "
+    | (c,_,_,_)::_ -> countParam c 0
+  ;;
+
+  (* Stampa una tupla su cui fare il match a partire da una lista di coppie a tre argomenti *)
+  let printListInputMatch3args ls = 
+    let rec countParam p num = (
+      match p with 
+        ParamList(_,nxt) -> "_e"^ ( num |> string_of_int) ^ if nxt == NoneP then countParam nxt (num + 1) else  "," ^ countParam nxt (num + 1)
+        | NoneP -> "" 
+    ) in match ls with 
+    [] -> " "
+    | (c,_,_)::_ -> countParam c 0
+  ;;
+
+  (* Stampa una tupla su cui fare il match a partire da una lista di coppie a quattro argomenti *)
+  let printListInputMatch4args ls = 
+    let rec countParam p num = (
+      match p with 
+        ParamList(_,nxt) -> "_e"^ ( num |> string_of_int) ^ if nxt == NoneP then countParam nxt (num + 1) else  "," ^ countParam nxt (num + 1)
+        | NoneP -> "" 
+    ) in match ls with 
+    [] -> " "
+    | (c,_,_,_)::_ -> countParam c 0
+  ;;
+
   (** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
   let printRules k v = match v with 
-    Predicate{rows = a} -> ("\nlet rec " ^ k ^ " istance = match istance with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
-    | Function{rows = a} -> ("\nlet rec " ^ k ^ " istance = match istance with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
+    Predicate{rows = a} -> ("\nlet rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
+    | Function{rows = a} -> ("\nlet rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
   
   (** Itera tutte le regole valutate in modo da stamparle *)
   let print_rules r = Eval.iter printRules r;;
