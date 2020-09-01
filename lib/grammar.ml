@@ -5,16 +5,17 @@ and paramList = ParamList of param * paramList | NoneP;;
 (** Dichiarazione di nuovi tipi *)
 type declarationType = Declaration of param * paramList * declarationType | EndDecl;;
 (** Fomrula atomica *)
-type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList;;
+type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList | Add of paramList | Member of paramList;;
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
+
+let nextContext = ref 0;;
 (** Lista di input (Regole, Formule, Codice Ocaml Embedded, nuovi tipi ) *)
 type input = 
   Rule of int * atom * atomList * input 
   | Formula of int * atom * input 
   | OcamlEmbedded of string * input 
   | DeclarationType of declarationType * input 
-  | PrintType of input 
   | None;;
 
 (** Valutazione delle righe contenenti Regole e formule *)
@@ -49,7 +50,7 @@ let print_types t =
     let rec print_types_inner t2 = (
       match t2 with 
       Declaration(Name a,b,c) -> a ^ " = " ^ print_newType b ^ if c == EndDecl then print_types_inner c else "\n\n and " ^ print_types_inner c
-      | EndDecl -> ";;"
+      | EndDecl -> ";;\n"
       | _ -> failwith("Type declaration error 3")
       ) 
    in
@@ -72,18 +73,6 @@ let updateEvalFunction v n = match v with
   Function{rows = a} -> Function{rows = n::a}
   | _ -> failwith("Error");;
   
-(** Cerca nell'AST le dichiarazioni di nuovi tipi e li compatta in una lista di Declaration *)
-let rec loop_types r = match r with 
-  None -> EndDecl
-  | Formula(_,_,b) ->  loop_types b
-  | Rule(_,_,_,c) -> loop_types c
-  | OcamlEmbedded(_,n) -> loop_types n
-  | PrintType(nxt) -> loop_types nxt
-  | DeclarationType(d,n) -> let next = loop_types n in (
-      match d with
-      Declaration(a,b,_) -> Declaration(a,b,next)
-      | EndDecl -> EndDecl
-    );;
 (** Stampa un nuovo contesto *)
 let printContext v2 =
     let printParam v = match v with 
@@ -96,7 +85,11 @@ let printContext v2 =
     match nxt with 
       ParamList(v1,nxt1) -> (
         match nxt1 with 
-          ParamList(v2,_) -> "type " ^ printParam v ^ " = " ^ printParam v2 ^ " "^ printParam v1 ^"."^printParam v2 ^";;"
+          ParamList(v2,_) -> let (count,_) = (!nextContext,incr nextContext) in  
+            "module E"^ (count |> string_of_int) ^ " = Map.Make("^printParam v1 ^");;\n" ^
+            "type " ^ printParam v ^ " = " ^ printParam v2 ^ " E" ^ (count |> string_of_int) ^"."^printParam v2 ^";;\n" ^
+            "let member"^ printParam v ^ " _C x = E"^ (count |> string_of_int) ^".find x _C;;\n" ^
+            "let add"^ printParam v ^ " _C x t1 = E"^ (count |> string_of_int) ^".add x t1 _C;;\n"
           | NoneP -> failwith("Error")
       )
       | NoneP -> failwith("Error")
@@ -104,17 +97,18 @@ let printContext v2 =
   | NoneP -> failwith("Error")
 ;;
 (** Prende in input l'AST e restuisce una mappa che associata al nome della regola una lista di coppie tuple => Lista di atomici (tuple sono i valori matchati in Ocaml e la lista di atomici le operazioni da fare) *)
-let rec loop_rules newTypes r = match r with 
+let rec loop_rules r = match r with 
   None -> Eval.empty
-  | Formula(line,a,b) ->  let m = loop_rules newTypes b in (
+  | Formula(line,a,b) ->  let m = loop_rules b in (
       match a with
         Atom(c,d) -> 
           let (lst, pl) = getLastParam d in 
             if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
         | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
         | Context(v2) -> let _ = printContext v2 |> print_endline in m
+        | _ -> failwith("Error in atom def")
       )
-  | Rule(line,a,b,c) -> let m = loop_rules newTypes c in (
+  | Rule(line,a,b,c) -> let m = loop_rules c in (
     match a with
       Atom(d,e) -> 
       let (lst, pl) = getLastParam e in 
@@ -122,9 +116,8 @@ let rec loop_rules newTypes r = match r with
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
       | _ -> m
     )
-  | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules newTypes n
-  | DeclarationType(_,n) -> loop_rules newTypes n
-  | PrintType(nxt) -> let _ = newTypes |> print_endline in loop_rules newTypes nxt;;
+  | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules n
+  | DeclarationType(dec,n) -> let _ = dec |> print_types |> print_endline in loop_rules n;;
 
   (** Stampa una tupla con i valori contenuti *)
   let rec printTuple t = 
@@ -180,24 +173,81 @@ let rec loop_rules newTypes r = match r with
           | _ -> failwith("Error")
       ) 
     | None -> "true";;
-  
+
   (** Stampa la riga di una effettiva funzione *)
-  let rec printResultState al final = match al with
-    AtomList(a,nxt) -> (
-     match a with 
-     Atom(name, pl) -> 
-       let (lst, pl1) = getLastParam pl in 
-         (
-           match lst with 
-             Name v1 -> " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
-             | Variable v1 -> " let " ^ "_" ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
-             | TypeS v1 ->  " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
-             | Type(v1,v2) -> "( match " ^ name ^ " " ^ printParams pl1 ^ " with " ^ v1 ^ " " ^ printTuple v2 ^ " -> " ^ printResultState nxt final ^ " | _ -> failwith(\"Error!\"))"
-         )
-     | Keyword(name,pl) -> "if " ^ name ^ " " ^ printParams pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
-     | _ -> failwith("Error")
-   )
-   | None -> printParam final;; 
+  let rec printResultState al final = 
+    let printAdd pl f2 nxt = 
+      (match pl with 
+        ParamList(v1,nxt1) -> (
+          match nxt1 with 
+            ParamList(v2,nxt2) -> (
+              match nxt2 with 
+                ParamList(v3,nxt3) -> (
+                  match nxt3 with
+                    ParamList(v4,nxt4) -> (
+                      match nxt4 with
+                        ParamList(v5,_) -> (
+                          match v5 with 
+                            Name nm -> " let " ^ nm ^ " = add" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " in " ^ printResultState nxt f2
+                            | Variable nm -> " let " ^ "_" ^ nm ^ " = add" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " in " ^ printResultState nxt f2
+                            | TypeS nm ->  " let " ^ nm ^ " = add" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " in " ^ printResultState nxt f2
+                            | Type(nm,nm1) -> "( match add" ^ printParam v1 ^ " "^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " with " ^
+                                 nm ^ " " ^ printTuple nm1 ^ " -> " ^ printResultState nxt f2 ^ " | _ -> failwith(\"Error!\"))"
+                        )
+                        | _ -> failwith("Error Add Def")
+                    )
+                    | _ -> failwith("Error Add Def")
+                )
+                | _ -> failwith("Error Add Def")
+            )
+            | _ -> failwith("Error Add Def")
+        )
+        | _ -> failwith("Error Add Def"))
+        in
+        let printMember pl f2 nxt = 
+          (match pl with 
+            ParamList(v1,nxt1) -> (
+              match nxt1 with 
+                ParamList(v2,nxt2) -> (
+                  match nxt2 with 
+                    ParamList(v3,nxt3) -> (
+                      match nxt3 with
+                            ParamList(v5,_) -> (
+                              match v5 with 
+                                Name nm -> " let " ^ nm ^ " = member" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " in " ^ printResultState nxt f2
+                                | Variable nm -> " let " ^ "_" ^ nm ^ " = member" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ "  in " ^ printResultState nxt f2
+                                | TypeS nm ->  " let " ^ nm ^ " = member" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ "  in " ^ printResultState nxt f2
+                                | Type(nm,nm1) -> "( match member" ^ printParam v1 ^ " "^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ "with " ^
+                                     nm ^ " " ^ printTuple nm1 ^ " -> " ^ printResultState nxt f2 ^ " | _ -> failwith(\"Error!\"))"
+                            )
+                            | _ -> failwith("Error Add Def")
+                        )
+                    | _ -> failwith("Error Add Def")
+                )
+                | _ -> failwith("Error Add Def")
+            )
+            | _ -> failwith("Error Add Def"))
+            in
+   (
+     match al with
+       AtomList(a,nxt) -> (
+        match a with 
+        Atom(name, pl) -> 
+          let (lst, pl1) = getLastParam pl in 
+            (
+              match lst with 
+                Name v1 -> " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+                | Variable v1 -> " let " ^ "_" ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+                | TypeS v1 ->  " let " ^ v1 ^ " = " ^ name ^ " " ^ printParams pl1 ^ " in " ^ printResultState nxt final
+                | Type(v1,v2) -> "( match " ^ name ^ " " ^ printParams pl1 ^ " with " ^ v1 ^ " " ^ printTuple v2 ^ " -> " ^ printResultState nxt final ^ " | _ -> failwith(\"Error!\"))"
+            )
+        | Keyword(name,pl) -> "if " ^ name ^ " " ^ printParams pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
+        | Add(pl) -> printAdd pl final nxt
+        | Member(pl) -> printMember pl final nxt
+        | _ -> failwith("Error")
+      )
+      | None -> printParam final
+   );; 
 
   (** Stampa una nuova riga di un predicato *)
   let printNewRowPredicate a b = match a with 

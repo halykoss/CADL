@@ -9,8 +9,7 @@ let print_type a b = a ^ " | " ^  b;;
             let lexbuf = Lexing.from_channel in_channel in
             try 
                   let result = Parser.main Lexer.token lexbuf in
-                    let newTypes = result |> Grammar.loop_types |> Grammar.print_types in 
-                    result |> Grammar.loop_rules newTypes |> Grammar.print_rules;
+                    result |> Grammar.loop_rules |> Grammar.print_rules;
                     print_newline();
                     flush stdout;
             with 

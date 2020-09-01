@@ -11,6 +11,7 @@
         %token PRINTTYPE
         %token COMMA
         %token DOT
+        %token AND
         %token TYPEDEFZONE
         %token EOL
         %token EOF
@@ -27,10 +28,14 @@
         input:
             /* lambda */                                { None }
         |   OCAMLEMBEDDED input                         { OcamlEmbedded(String.sub $1 2 ((String.length $1) - 4),$2) }
-        |   param NEWTYPE param ls_def_type DOT input   { DeclarationType(Declaration($1,ParamList($3,$4),EndDecl),$6) }
+        |   param NEWTYPE param ls_def_type next_type DOT input   { DeclarationType(Declaration($1,ParamList($3,$4),$5),$7) }
         |   atom DOT input                              { Formula(!num_lines,$1,$3) }
-        |   PRINTTYPE DOT input                         { PrintType($3) }
         |   atom INFERENCE atomList DOT input           { Rule(!num_lines,$1,$3,$5)}
+        ;
+
+        next_type:
+            /* lambda */                                    { EndDecl } 
+        |   AND param NEWTYPE param ls_def_type next_type   { Declaration($2,ParamList($4,$5),$6) }
         ;
 
         atom:

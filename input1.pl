@@ -1,11 +1,6 @@
-#* 
-module Name = String;;
-type name = Name.t;;
-*#
-
 tuples ::= Tuples(exp,tuples) | EndS 
-and exp ::=  Var(name) | Num(int) | Fun(name, t, exp) 
-    | App(exp, exp) | Let(name,exp,exp) 
+and exp ::=  Var(string) | Num(int) | Fun(string, t, exp) 
+    | App(exp, exp) | Let(string,exp,exp) 
     | DeclTup(tuples) | GetTup(exp,exp) | Nil(t) 
     | Unit | Bool(bool) | IsNil(t,exp) | Cons(t,exp,exp)
 		| Head(t,exp) | Tail(t,exp) | Fix(exp) | Ref(exp)
@@ -23,7 +18,7 @@ let rec getIndexTup key tup = match (key,tup) with
   | (_ , _) -> failwith("Index Error");;
 *#
 
-@Context(type_env,Name,t).
+@Context(type_env,String,t).
 
 @Compat(TypI, TypI).
 @Compat(TypUnit, TypUnit).
