@@ -3,6 +3,8 @@ LEXER=ocamllex
 PARSER=ocamlyacc
 OFILE=generated.yy.ml
 
+FILE?=default.pl
+
 all:
 	$(LEXER) lib/lexer/lexer.mll
 	$(PARSER) lib/parser/parser.mly
@@ -21,4 +23,4 @@ ounit:
 	$(BS) runtest
 
 exec:
-	dune exec bin/main.exe > $(OFILE)
+	dune exec bin/main.exe $(FILE) > $(OFILE)
