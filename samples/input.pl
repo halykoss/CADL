@@ -1,4 +1,4 @@
-#* 
+#*
 module Name = String;;
 type name = Name.t;;
 *#
