@@ -18,8 +18,8 @@ and t ::=  TypI | TypUnit |TypF(t, t) | TypTu(v) |TypList(t) | TypBool | TypRef(
 let id value = value;;
 
 let rec getIndexTup key tup = match (key,tup) with
-  | (0 , TypInnerTup(x,y)) -> x
-  | (idx,TypInnerTup(x,y)) -> getIndexTup (idx - 1) y
+  | (0 , TypInnerTup(x,_)) -> x
+  | (idx,TypInnerTup(_,y)) -> getIndexTup (idx - 1) y
   | (_ , _) -> failwith("Index Error");;
 *#
 

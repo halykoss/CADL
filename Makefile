@@ -25,7 +25,8 @@ ounit:
 	$(BS) runtest
 
 exec:
+	rm -rf generated
 	mkdir generated
-	echo "(library (name Generated))" >> generated/dune
+	echo "(library (name generated))" >> generated/dune
 	dune exec bin/main.exe $(FILE) > $(OFILE)
 	mv $(OFILE) generated

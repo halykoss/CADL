@@ -251,11 +251,11 @@ let rec loop_rules r = match r with
 
   (** Stampa una nuova riga di un predicato *)
   let printNewRowPredicate a b = match a with 
-    (c,d,line) ->  "\n (** Line "^ (line |> string_of_int) ^" *) \n | " ^ printTuple c ^ " -> " ^ printResult d ^ b;;
+    (c,d,line) ->  "\n (* Line "^ (line |> string_of_int) ^" *) \n | " ^ printTuple c ^ " -> " ^ printResult d ^ b;;
 
   (** Stampa una nuova riga di funzione *)
   let printNewRowFunction a b = match a with 
-   (c,d,e,line) ->  "\n (** Line "^ (line |> string_of_int) ^" *) \n |  " ^ printTuple c ^ " -> " ^ printResultState d e ^ b;;
+   (c,d,e,line) ->  "\n (* Line "^ (line |> string_of_int) ^" *) \n |  " ^ printTuple c ^ " -> " ^ printResultState d e ^ b;;
 
   (* Stampa un'intestazione di funzione a partire da una lista di coppie a tre argomenti *)
   let printListInput3args ls = 
@@ -303,8 +303,8 @@ let rec loop_rules r = match r with
 
   (** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
   let printRules k v = match v with 
-    Predicate{rows = a} -> ("\nlet rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
-    | Function{rows = a} -> ("\nlet rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
+    Predicate{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
+    | Function{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
   
   (** Itera tutte le regole valutate in modo da stamparle *)
   let print_rules r = Eval.iter printRules r;;
