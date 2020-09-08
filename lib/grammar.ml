@@ -9,8 +9,11 @@ type atom = Atom of string * paramList | Keyword of string * paramList | Context
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
 
+let contains_term = Hashtbl.create 123456;;
+
 let nextContext = ref 0;;
-(** Lista di input (Regole, Formule, Codice Ocaml Embedded, nuovi tipi ) *)
+let decTerm = ref (Declaration(Name "unit",NoneP,EndDecl));
+(* Lista di input (Regole, Formule, Codice Ocaml Embedded, nuovi tipi ) *)
 type input = 
   Rule of int * atom * atomList * input 
   | Formula of int * atom * input 
@@ -18,7 +21,7 @@ type input =
   | DeclarationType of declarationType * input 
   | None;;
 
-(** Valutazione delle righe contenenti Regole e formule *)
+(* Valutazione delle righe contenenti Regole e formule *)
 type new_evaluation =
   Predicate of {
     rows     : (paramList * atomList * int) list;
@@ -27,10 +30,10 @@ type new_evaluation =
     rows     : (paramList * atomList * param * int) list;
   };;
 
-(** Map contenente la lista delle regole e formule valutate *)
+(* Map contenente la lista delle regole e formule valutate *)
 module Eval =  Map.Make(String);;
 
-(** Costruisce una stringa con tutti i nuovi tipi definiti dall'utente *)
+(* Costruisce una stringa con tutti i nuovi tipi definiti dall'utente *)
 let print_types t = 
     let rec print_paramList pm = (
         match pm with
@@ -57,23 +60,23 @@ let print_types t =
        "type " ^ print_types_inner t
   ;;
 
-(** Permette di ottenere da una lista di parametri l'ultimo elemento e una nuova lista senza quest'ultimo *)
+(* Permette di ottenere da una lista di parametri l'ultimo elemento e una nuova lista senza quest'ultimo *)
 let rec getLastParam pl = match pl with 
   | ParamList(p,NoneP) -> (p,NoneP)
   | ParamList(p,nxt) -> let (p1,nxt1) = getLastParam nxt in (p1, ParamList(p,nxt1))
   | NoneP -> (Name "unit",NoneP);;
 
-(** Aggiorna un predicato già valutato *)
+(* Aggiorna un predicato già valutato *)
 let updateEvalPredicate v n = match v with
   Predicate{rows = a} -> Predicate{rows = n::a}
   | _ -> failwith("Error");;
 
-(** Aggiorna una riga di funzione già valutata *)
+(* Aggiorna una riga di funzione già valutata *)
 let updateEvalFunction v n = match v with
   Function{rows = a} -> Function{rows = n::a}
   | _ -> failwith("Error");;
   
-(** Stampa un nuovo contesto *)
+(* Stampa un nuovo contesto *)
 let printContext v2 =
     let printParam v = match v with 
     Name v1 -> v1
@@ -87,7 +90,7 @@ let printContext v2 =
         match nxt1 with 
           ParamList(v2,_) -> let (count,_) = (!nextContext,incr nextContext) in  
             "module E"^ (count |> string_of_int) ^ " = Map.Make("^printParam v1 ^");;\n" ^
-            "type " ^ printParam v ^ " = " ^ printParam v2 ^ " E" ^ (count |> string_of_int) ^"."^printParam v2 ^";;\n" ^
+            "type " ^ printParam v ^ " = " ^ printParam v2 ^ " E" ^ (count |> string_of_int) ^".t;;\n" ^
             "let member"^ printParam v ^ " _C x = E"^ (count |> string_of_int) ^".find x _C;;\n" ^
             "let add"^ printParam v ^ " _C x t1 = E"^ (count |> string_of_int) ^".add x t1 _C;;\n"
           | NoneP -> failwith("Error")
@@ -96,7 +99,137 @@ let printContext v2 =
   )
   | NoneP -> failwith("Error")
 ;;
-(** Prende in input l'AST e restuisce una mappa che associata al nome della regola una lista di coppie tuple => Lista di atomici (tuple sono i valori matchati in Ocaml e la lista di atomici le operazioni da fare) *)
+
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)     
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+
+  let print_term t = 
+    let rec print_paramList pm = 
+        begin
+          match pm with
+          NoneP -> " 'a "
+          | ParamList(Name vl,nxt) -> ( if  (compare vl "term") == 0 || Hashtbl.mem contains_term vl   then " 'a " else "" ) ^ vl ^ " * " ^ print_paramList nxt
+          | _ -> failwith("Type declaration error 1")
+        end
+   in
+    let rec print_newType nt = 
+        begin
+          match nt with 
+          NoneP -> ""
+          | ParamList(TypeS a,nxt) -> "\n\t\t | " ^ a ^ " of 'a " ^ print_newType nxt
+          | ParamList(Type(a,b),nxt) -> "\n\t\t | " ^ a ^ " of " ^ print_paramList b ^ print_newType nxt
+          | _ -> failwith("Type declaration error 2")
+        end
+   in 
+    let print_types_inner t2 = 
+      begin
+        match t2 with 
+        Declaration(Name a,b,_) -> a ^ " = " ^ print_newType b
+        | EndDecl -> ";;\n"
+        | _ -> failwith("Type declaration error 3")
+      end
+   in
+       " 'a " ^ print_types_inner t
+  ;;
+
+
+  let print_types_incremental t = 
+    let rec check_paramList pm = (
+        match pm with
+        NoneP -> false
+        | ParamList(Name vl,nxt) -> 
+        ( 
+          if (compare vl "term") == 0  then
+            true 
+           else false
+        ) || check_paramList nxt
+        | _ -> failwith("Type declaration error 1")
+        )
+   in
+    let rec check_term nt = (
+      match nt with 
+      NoneP -> false
+      | ParamList(TypeS _,nxt) -> false ||  check_term nxt
+      | ParamList(Type(_,b),nxt) -> check_paramList b || check_term nxt
+      | _ -> failwith("Type declaration error 2")
+      )
+   in  
+    let rec print_paramList pm recursive = (
+        match pm with
+        NoneP -> ""
+        | ParamList(Name vl,nxt) -> 
+        ( 
+          if (compare vl "term") == 0 || Hashtbl.mem contains_term vl || recursive  then
+           " 'a " 
+           else "" 
+        ) ^ vl ^ if nxt == NoneP then print_paramList nxt recursive else " * " ^ print_paramList nxt recursive
+        | _ -> failwith("Type declaration error 1")
+        )
+   in
+    let rec print_newType nt recursive = (
+      match nt with 
+      NoneP -> ""
+      | ParamList(TypeS a,nxt) -> "\n\t\t | " ^ a ^ print_newType nxt recursive
+      | ParamList(Type(a,b),nxt) -> "\n\t\t | " ^ a ^ " of " ^ print_paramList b recursive ^ print_newType nxt recursive
+      | _ -> failwith("Type declaration error 2")
+      )
+   in 
+    let rec print_types_inner t2 = (
+      match t2 with 
+      Declaration(Name a,b,c) -> (
+        if (compare a "term") == 0 then 
+          print_term t2 
+        else 
+        let recursive = check_term b in (
+             if recursive then 
+               let _ = Hashtbl.add contains_term a true in " 'a "
+            else 
+               ""
+          ) ^ a ^ " = " ^ print_newType b recursive ) ^ if c == EndDecl then print_types_inner c else "\n\n\t and " ^ print_types_inner c
+      | EndDecl -> ";;\n"
+      | _ -> failwith("Type declaration error 3")
+      ) 
+   in
+       "\ttype " ^ print_types_inner t
+  ;;
+
+  let rec loop_rules_incremental r = match r with 
+  None -> Eval.empty
+  | Formula(line,a,b) ->  let m = loop_rules_incremental b in (
+      match a with
+        Atom(c,d) -> 
+          let (lst, pl) = getLastParam d in 
+            if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
+        | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
+        | Context(v2) -> let _ = printContext v2 |> print_endline in m
+        | _ -> failwith("Error in atom def")
+      )
+  | Rule(line,a,b,c) -> let m = loop_rules_incremental c in (
+    match a with
+      Atom(d,e) -> 
+      let (lst, pl) = getLastParam e in 
+        if Eval.mem d m then Eval.add d (updateEvalFunction (Eval.find d m) (pl,b,lst,line)) m else Eval.add d (Function{rows = [(pl,b,lst,line)]}) m
+      | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
+      | _ -> m
+    )
+  | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules_incremental n
+  | DeclarationType(dec,n) -> let _ = dec |> print_types_incremental |> print_endline in loop_rules_incremental n;;
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)     
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+  (***********************************************************************************************************)
+
+(* Prende in input l'AST e restuisce una mappa che associata al nome della regola una lista di coppie tuple => Lista di atomici (tuple sono i valori matchati in Ocaml e la lista di atomici le operazioni da fare) *)
 let rec loop_rules r = match r with 
   None -> Eval.empty
   | Formula(line,a,b) ->  let m = loop_rules b in (
@@ -119,7 +252,7 @@ let rec loop_rules r = match r with
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules n
   | DeclarationType(dec,n) -> let _ = dec |> print_types |> print_endline in loop_rules n;;
 
-  (** Stampa una tupla con i valori contenuti *)
+  (* Stampa una tupla con i valori contenuti *)
   let rec printTuple t = 
         let printParam v = match v with 
           Name v1 ->  v1
@@ -135,7 +268,7 @@ let rec loop_rules r = match r with
         "(" ^ printInnerTuple t
     ;;  
   
-    (** Stampa una tupla con i valori contenuti *)
+    (* Stampa una tupla con i valori contenuti *)
   let printParams t = 
     let printParam v = match v with 
       Name v1 ->  v1
@@ -151,14 +284,14 @@ let rec loop_rules r = match r with
     " " ^ printInnerTuple t
 ;;  
 
-  (** Stampa un parametro *)
+  (* Stampa un parametro *)
   let printParam v = match v with 
     Name v1 -> v1
     | Variable v1 -> "_" ^ v1 
     | TypeS v1 ->  v1
     | Type(v1,v2) -> v1 ^ printTuple v2
   ;;  
-  (** Stampa la riga di un predicato *)
+  (* Stampa la riga di un predicato *)
   let rec printResult r = match r with
     AtomList(v1,None) -> (
         match v1 with 
@@ -174,7 +307,7 @@ let rec loop_rules r = match r with
       ) 
     | None -> "true";;
 
-  (** Stampa la riga di una effettiva funzione *)
+  (* Stampa la riga di una effettiva funzione *)
   let rec printResultState al final = 
     let printAdd pl f2 nxt = 
       (match pl with 
@@ -249,11 +382,11 @@ let rec loop_rules r = match r with
       | None -> printParam final
    );; 
 
-  (** Stampa una nuova riga di un predicato *)
+  (* Stampa una nuova riga di un predicato *)
   let printNewRowPredicate a b = match a with 
     (c,d,line) ->  "\n (* Line "^ (line |> string_of_int) ^" *) \n | " ^ printTuple c ^ " -> " ^ printResult d ^ b;;
 
-  (** Stampa una nuova riga di funzione *)
+  (* Stampa una nuova riga di funzione *)
   let printNewRowFunction a b = match a with 
    (c,d,e,line) ->  "\n (* Line "^ (line |> string_of_int) ^" *) \n |  " ^ printTuple c ^ " -> " ^ printResultState d e ^ b;;
 
@@ -306,5 +439,10 @@ let rec loop_rules r = match r with
     Predicate{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
     | Function{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
   
-  (** Itera tutte le regole valutate in modo da stamparle *)
+  (* Itera tutte le regole valutate in modo da stamparle *)
   let print_rules r = Eval.iter printRules r;;
+
+
+
+
+

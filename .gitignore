@@ -32,3 +32,6 @@ prova.txt
 pointers-ts-2.ml
 pointers-ts-2.pl
 generated
+lib/lexer.ml
+lib/parser.ml
+lib/parser.mli

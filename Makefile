@@ -28,5 +28,5 @@ exec:
 	rm -rf generated
 	mkdir generated
 	echo "(library (name generated))" >> generated/dune
-	dune exec bin/main.exe $(FILE) > $(OFILE)
+	dune exec bin/main.exe $(FILE) inc > $(OFILE)
 	mv $(OFILE) generated
