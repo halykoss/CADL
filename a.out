@@ -1,0 +1,31 @@
+#!/bin/bash
+
+rm -rf generated
+myArray=("$@") 
+incremental="-i"
+testing="-t"
+ofile="generated.ml"
+
+if [ ! -f lib/lexer.ml ] || [ ! -f lib/parser.ml ] || [ ! -f lib/parser.mli ]; then
+    echo "Run make!"
+    exit 1
+fi
+
+if [ ! -f $1 ]; then
+    echo "File not found!"
+    exit 1
+fi
+
+if [[ " ${myArray[@]} " =~ " ${incremental} " ]]; then
+    dune exec bin/main.exe $1 inc > ${ofile}
+else
+    dune exec bin/main.exe $1 > ${ofile}
+fi
+
+mkdir generated
+echo "(library (name generated))" >> generated/dune
+mv ${ofile} generated
+
+if [[ " ${myArray[@]} " =~ " ${testing} " ]]; then
+    dune runtest
+fi

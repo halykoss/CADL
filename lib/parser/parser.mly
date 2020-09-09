@@ -10,6 +10,7 @@
         %token SEPARATOR
         %token PRINTTYPE
         %token COMMA
+        %token COMPATENV
         %token DOT
         %token AND
         %token TYPEDEFZONE
@@ -30,6 +31,7 @@
         |   OCAMLEMBEDDED input                         { OcamlEmbedded(String.sub $1 2 ((String.length $1) - 4),$2) }
         |   param NEWTYPE param ls_def_type next_type DOT input   { DeclarationType(Declaration($1,ParamList($3,$4),$5),$7) }
         |   atom DOT input                              { Formula(!num_lines,$1,$3) }
+        |   COMPATENV OCAMLEMBEDDED DOT input           { CompatEnv(!num_lines,$2,$4)}
         |   atom INFERENCE atomList DOT input           { Rule(!num_lines,$1,$3,$5)}
         ;
 

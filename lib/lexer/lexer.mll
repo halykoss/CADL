@@ -31,6 +31,7 @@
             [' ' '\t']     { token lexbuf }     (* skip blanks *)
           | ['\n' ]        { incr num_lines;line_start := (lexbuf |> Lexing.lexeme_end);token lexbuf }
           | "@PrintType"   { PRINTTYPE }
+          | "@CompatEnv"   { COMPATENV }
           | "and"          { AND }
           | ['@'] keywords as lxm { KEYWORD lxm }
           | id as lxm { MIN lxm }
