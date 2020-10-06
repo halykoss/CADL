@@ -10,6 +10,8 @@
         %token SEPARATOR
         %token PRINTTYPE
         %token COMMA
+        %token LLIST 
+        %token RLIST
         %token COMPATENV
         %token DOT
         %token AND
@@ -50,6 +52,7 @@
         |   CAP                             { Variable $1 }  
         |   TYPE                            { TypeS $1 }  
         |   TYPE LPAREN paramList RPAREN    { Type($1,$3) }
+        |   LLIST MIN RLIST                 { List $2 }
         ;
         
         ls_def_type:

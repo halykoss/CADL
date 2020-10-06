@@ -2,13 +2,13 @@ open Generated;;
 open OUnit2;;
 
 (* \x:Bool. let y = 8 in (x,y) *)
-let t1 = type_check E1.empty (Fun("x", TypBool,Let("y",Num 8,DeclTup(Tuples(Var "x",Tuples(Var "y",EndS))))));;
-assert_equal (TypF(TypBool, TypTu (TypInnerTup (TypBool, TypInnerTup (TypI, End))))) t1;;
+let t1 = type_check E1.empty (Fun("x", TypBool,Let("y",Num 8,DeclTup([Var "x";Var "y"]))));;
+assert_equal (TypF(TypBool, TypTu [TypBool;TypI])) t1;;
 (* (\x:Bool. let y = 8 in (x,y)) true *)
-let t2 = type_check E1.empty (App(Fun("x", TypBool,Let("y",Num 8,DeclTup(Tuples(Var "x",Tuples(Var "y",EndS))))),Bool(true)));;
-assert_equal (TypTu (TypInnerTup (TypBool, TypInnerTup (TypI, End)))) t2;;
+let t2 = type_check E1.empty (App(Fun("x", TypBool,Let("y",Num 8,DeclTup([Var "x";Var "y"]))),Bool(true)));;
+assert_equal (TypTu [TypBool;TypI]) t2;;
 (* ((\x:Bool. let y = 8 in (x,y)) true).0 *)
-let t3 = type_check E1.empty (GetTup(Num 0,App(Fun("x", TypBool,Let("y",Num 8,DeclTup(Tuples(Var "x",Tuples(Var "y",EndS))))),Bool(true))));;
+let t3 = type_check E1.empty (GetTup(Num 0,App(Fun("x", TypBool,Let("y",Num 8,DeclTup([Var "x";Var "y"]))),Bool(true))));;
 assert_equal (TypBool) t3;;
 (* \x,y:Unit, Unit. isNil(Nil[Bool]) *)
 let t4 = type_check E1.empty (Fun("x",TypUnit,Fun("y",TypUnit,IsNil(TypBool,Nil(TypBool)))));;
