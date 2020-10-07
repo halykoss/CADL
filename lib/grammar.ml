@@ -356,7 +356,7 @@ let rec loop_rules_incremental r = match r with
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
       | _ -> m
     )
-  | OcamlEmbedded(s,n) -> let m = loop_rules_incremental n in let _ = s |> print_endline in m
+  | OcamlEmbedded(s,n) -> let _ = s |> print_endline in let m = loop_rules_incremental n in m
   | DeclarationType(dec,n) -> let _ = dec |> print_types_incremental |> print_endline in loop_rules_incremental n
   | CompatEnv(_,s,nxt) -> let _ = s |> print_endline;isCompatEnvDec := true in loop_rules_incremental nxt;;
 

@@ -26,9 +26,8 @@ let lexbuf = Lexing.from_channel in_channel in
    try 
      if  (compare Sys.argv.(2) "inc") == 0 then 
        (
-         decl |> print_endline;
-         "module FunSpecification (* : LanguageSpecification *) = struct" |> print_endline;
          let evaluated = result |> Grammar.loop_rules_incremental in
+         "module FunSpecification (* : LanguageSpecification *) = struct" |> print_endline;
          let _ = !(Grammar.decTerm) |> Grammar.print_term_getannot |> print_endline  in 
          let _ = !(Grammar.decTerm) |> Grammar.print_term_edit |> print_endline  in 
          let _ = "\n\tlet rec compute_hash e = Hashtbl.hash_param max_int max_int e;;" |> print_endline in

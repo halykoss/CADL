@@ -11,17 +11,16 @@ module FunContext = Hashtbl.Make(struct
 	let equal = String.equal
 end);;
 ##
+
 term ::=  Var(string) | Num(int) | Fun(string, res, term) 
     | App(term, term) | Let(string,term,term) 
-    | DeclTup([term]) | GetTup(term,term) | Nil(res) 
+    | DeclTup([term]) | GetTup(int,term) | Nil(res) 
     | Unit | Bool(bool) | IsNil(res,term) | Cons(res,term,term)
 		| Head(res,term) | Tail(res,term) | Fix(term) | Ref(term)
 		| Deref(term) | PointerAss(term,term) | Location(term) 
 and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | TypBool | TypRef(res).
 
 ##
-  let getIndexValue value = match value with Num(nr) -> nr | _ -> failwith "Error";;
-
   let varSingleton v k = k (VarSet.singleton v);;
   let union ls1 ls2 = VarSet.union ls1 ls2;;
   let remove value ls = VarSet.remove value ls;;
@@ -62,7 +61,7 @@ free_variables_cps(Location(e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(IsNil(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Head(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Tail(rs,e),k,t) :- free_variables_cps(e,k,t).
-free_variables_cps(GetTup(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(GetTup(idx,e2),k,t) :- free_variables_cps(e2,k,t).
 free_variables_cps(Cons(rs,e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 free_variables_cps(PointerAss(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 
@@ -82,7 +81,7 @@ type_check(C, Fun(x, t1, e), TypF(t1,t2)) :- @Add(context,C, x, t1, C1), type_ch
 type_check(C, App(e1, e2), t2) :- type_check(C, e1, TypF(t1, t2)), type_check(C, e2, t3), @Compat(t1,t3).
 type_check(C, Let(x,e,e1),t2) :- type_check(C,e,t1), @Add(context,C, x, t1 , C1), type_check(C1, e1, t2).
 type_check(C, DeclTup(e1), TypTu(t)) :- type_check(C,t1) ,@ListMap(t1,e1,t).
-type_check(C,GetTup(idx,exp1),t) :- type_check(C,exp1,TypTu(tup)), getIndexValue(idx,nr), getIndexTup(nr,tup,t).
+type_check(C,GetTup(idx,exp1),t) :- type_check(C,exp1,TypTu(tup)), getIndexTup(idx,tup,t).
 type_check(C,Nil(t),TypList(t)).
 type_check(C,IsNil(t,exp),TypBool) :- type_check(C,exp,t2), @Compat(t2,TypList(t)).
 type_check(C,Cons(t,exp1,exp2),TypList(t)) :- type_check(C,exp1,t1), type_check(C,exp2,t2), @Compat(t,t1), @Compat(TypList(t),t2).
