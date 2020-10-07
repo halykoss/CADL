@@ -28,9 +28,9 @@ $ make
 
 Per ripulire l'albero del progetto:
 
-'''
+```
 $ make clean
-'''
+```
 
 ## How to use it?
 
