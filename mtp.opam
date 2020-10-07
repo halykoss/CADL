@@ -5,5 +5,5 @@ maintainer: "Federico Pennino <f.pennino@studenti.unipi.it>"
 
 depends: [
   "dune" {build}
-  "ounit"
+  "ounit2"
 ]
