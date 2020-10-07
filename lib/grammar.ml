@@ -5,7 +5,7 @@ and paramList = ParamList of param * paramList | NoneP;;
 (** Dichiarazione di nuovi tipi *)
 type declarationType = Declaration of param * paramList * declarationType | EndDecl;;
 (** Fomrula atomica *)
-type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList | Add of paramList | Member of paramList;;
+type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList | Add of paramList | Member of paramList | Map of paramList;;
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
 
@@ -72,12 +72,12 @@ let rec getLastParam pl = match pl with
 (* Aggiorna un predicato già valutato *)
 let updateEvalPredicate v n = match v with
     Predicate{rows = a} -> Predicate{rows = n::a}
-  | _ -> failwith("Error");;
+  | _ -> failwith("Error 3");;
 
 (* Aggiorna una riga di funzione già valutata *)
 let updateEvalFunction v n = match v with
     Function{rows = a} -> Function{rows = n::a}
-  | _ -> failwith("Error");;
+  | _ -> failwith("Error 4");;
 
 (* Stampa un nuovo contesto *)
 let printContext v2 =
@@ -86,7 +86,7 @@ let printContext v2 =
     | Variable v1 ->  v1 
     | TypeS v1 ->  v1
     | List v1 -> v1 ^ " list"
-    | _ -> failwith("Error")
+    | _ -> failwith("Error 5")
   in  match v2 with
     ParamList(v,nxt) -> (
       match nxt with 
@@ -98,7 +98,7 @@ let printContext v2 =
 
                   "type " ^ printParam v ^ " = " ^ printParam v2 ^ " "^ printParam v3 ^".t;;\n" ^
                   "let member"^ printParam v ^ " _C x = "^ printParam v3 ^".find _C x ;;\n" ^
-                  "let add"^ printParam v ^ " _C x t1 = "^ printParam v3 ^".add _C x t1 ;;\n"
+                  "let add"^ printParam v ^ " _C x t1 = let t = "^ printParam v3 ^".copy _C in let _ = "^ printParam v3 ^".add t x t1 in t;;\n"
                 )
               | NoneP -> (
                   let (count,_) = (!nextContext,incr nextContext) in  
@@ -108,11 +108,11 @@ let printContext v2 =
                   "let add"^ printParam v ^ " _C x t1 = E"^ (count |> string_of_int) ^".add _C x t1;;\n"
                 )
             )
-          | NoneP -> failwith("Error")
+          | NoneP -> failwith("Error 6")
         )
-      | NoneP -> failwith("Error")
+      | NoneP -> failwith("Error 7")
     )
-  | NoneP -> failwith("Error")
+  | NoneP -> failwith("Error 8")
 ;;
 
 (***********************************************************************************************************)
@@ -135,7 +135,7 @@ let print_term_getannot t =
       | TypeS v1 -> v1 ^ " annot"
       | List v1 -> v1 ^ " list annot"
       | Type(v1,v2) -> v1 ^ printTupleAnnot v2
-      | _ -> failwith("Error"))
+      | _ -> failwith("Error 9"))
   in 
   let rec printRowAnnot t1 = (
     match t1 with 
@@ -213,7 +213,7 @@ let print_get_sorted_children t =
       Name v1 ->  v1 ^ " _"
     | TypeS v1 -> v1 ^ " _"
     | Type(v1,v2) -> v1 ^ printTupleEdit v2
-    | _ -> failwith("Error"))
+    | _ -> failwith("Error 10"))
   in      
   let printList v = 
     let rec printListEdit v1 idx count = (
@@ -441,13 +441,13 @@ let rec printResult r = match r with
       match v1 with 
         Atom(v3,v4) -> v3 ^ printParams v4 
       | Keyword(v3,v4) -> v3 ^ printParams v4
-      | _ -> failwith("Error")
+      | _ -> failwith("Error 11")
     ) 
   | AtomList(v1,v2) -> (
       match v1 with 
         Atom(v3,v4) -> v3 ^ printParams v4 ^ " && " ^ printResult v2
       | Keyword(v3,v4) -> v3 ^ printParams v4 ^ " && " ^ printResult v2
-      | _ -> failwith("Error")
+      | _ -> failwith("Error 12")
     ) 
   | None -> "true";;
 
@@ -470,7 +470,9 @@ let rec printResultState al final =
         | Keyword(name,pl) -> "if " ^ name ^ " " ^ printParams pl ^ " then " ^ printResultState nxt final ^ " else failwith(\"Error!\")"
         | Add(pl) -> printAdd pl final nxt
         | Member(pl) -> printMember pl final nxt
-        | _ -> failwith("Error")
+        | Map(pl) -> let (lst, pl1) = getLastParam pl in 
+          "let " ^ (lst |> printParam) ^ " = listMap " ^ ( pl1|> printParams) ^ " in " ^  printResultState nxt final
+        | _ -> failwith("Error 13")
       )
     | None -> printParam final
   )
@@ -491,7 +493,7 @@ and printAdd pl f2 nxt =
                        | TypeS nm ->  " let " ^ nm ^ " = add" ^ printParam v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " in " ^ printResultState nxt f2
                        | Type(nm,nm1) -> "( match add" ^ printParam v1 ^ " "^ " " ^ printParam v2 ^ " " ^ printParam v3  ^ " " ^ printParam v4 ^ " with " ^
                                          nm ^ " " ^ printTuple nm1 ^ " -> " ^ printResultState nxt f2 ^ " | _ -> failwith(\"Error!\"))"
-                       | _ -> failwith("Erro")
+                       | _ -> failwith("Error 15")
                      )
                    | _ -> failwith("Error Add Def")
                  )
@@ -615,7 +617,7 @@ let rec printResultStateIncr al final =
         | Keyword(name,pl) -> "if " ^ name ^ " " ^ printParams pl ^ " then " ^ printResultStateIncr nxt final ^ " else failwith(\"Error!\")"
         | Add(pl) -> printAdd pl final nxt
         | Member(pl) -> printMember pl final nxt
-        | _ -> failwith("Error")
+        | _ -> failwith("Error 20")
       )
     | None -> "Some (" ^ printParam final ^ ")"
   );;
@@ -624,19 +626,6 @@ let rec printResultStateIncr al final =
 (* Stampa una nuova riga di funzione *)
 let printNewRowFunctionInc a b = match a with 
     (c,d,e,line) ->  "\n\t\t (* Line "^ (line |> string_of_int) ^" *) \n\t\t |  " ^ printTuple c ^ " -> " ^ printResultStateIncr d e ^ b;;
-
-(** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
-let printRulesCheck k v = match v with 
-    Predicate{rows = a} -> ("\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n\t\t | _ -> false;;")) |> print_endline
-  | Function{rows = a} -> ("\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionInc a "\n\t\t | _ -> None")) |> print_endline;;
-
-let printCheck_join t = 
-  let _ = ("let checkjoin (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : res option =" |> print_endline) in
-  let value = Eval.find "check" t in 
-  let map = Eval.add "check" value (Eval.empty) in
-  let _ = Eval.iter printRulesCheck map in
-  ( "in check TypI TypI;;\n" |> print_endline)
-;;
 
 (* Stampa una tupla con i valori contenuti *)
 let printTupleFV t = 
@@ -659,6 +648,76 @@ let printTupleFV t =
   in 
   "(" ^ printInnerTupleFV t
 ;;  
+
+let getTermInTuple t = match t with
+  | ParamList(_,ParamList(v2,_)) -> ParamList(v2,NoneP)
+  | _ -> failwith("get Term Error")
+;;
+(* 
+  // TODO: Sostituire failwith con None 
+  // TODO: Inserire la chiamata a funzioni generiche
+  // TODO: Gestire Compat come una check 
+*) 
+let rec printInnerCJ ls idx final = 
+  let isSingular v = (
+    match v with
+      Name _ -> false
+    | Variable _ -> false
+    | _ -> true
+  ) in  
+  match ls with 
+    AtomList(Atom("type_check",pl),nxt) -> 
+    let (lst,_) = getLastParam pl in 
+    "(match List.nth_opt rs " ^ ( idx |> string_of_int) ^ " with Some(" ^ ( lst|> printParam) ^ ") -> ("^ (printInnerCJ nxt (idx + 1) final ^")" ^ if isSingular lst then (" \t| Some _ -> None \t| None -> None") else "\t| None -> None") ^ ")"
+  | AtomList(Atom(s,pl),nxt) -> 
+    let (lst,ls) = getLastParam pl in 
+    "(match " ^ s ^ " " ^ (ls |> printParams) ^ " with " ^ (lst |> printParam) ^ " -> " ^ printInnerCJ nxt idx final ^ (if isSingular lst then " \t | _ -> None" else "") ^ ")"
+  | AtomList(Map(pl),nxt) -> 
+    let (lst,_) = getLastParam pl in 
+    "(match rs with " ^ (lst |> printParam) ^ " -> " ^ printInnerCJ nxt idx final ^ (if isSingular lst then  "  | _ -> None)" else ")")
+  |AtomList(Keyword("compat",pl),nxt) ->
+    (*"(match check " ^ (pl |> printParams) ^ " with " ^  "Some _ -> " ^ printInnerCJ nxt idx final ^ "| None -> None)"*)
+    "(if check " ^ (pl |> printParams) ^ " then " ^  " ( " ^ printInnerCJ nxt idx final ^ " ) else None)"
+  | AtomList(Keyword(s,pl),nxt) ->
+    "(if " ^ s ^ " " ^ (pl |> printParams) ^ " then " ^  " ( " ^ printInnerCJ nxt idx final ^ " ) else None)"
+  | None -> " Some ("^ (final |> printParam) ^ ")"
+  | AtomList(Member(ParamList(p1,ParamList(p2,ParamList(p3,ParamList(p4,NoneP))))),nxt) ->
+    "(match member"^ (p1 |> printParam) ^" " ^ (p2 |> printParam) ^ " " ^ (p3 |> printParam) ^" with " ^ (p4 |> printParam) ^ " -> "^ (printInnerCJ nxt idx final) ^ (if isSingular p4 then  "  | _ -> None)" else ")")
+  | AtomList(_,nxt) -> printInnerCJ nxt idx final
+;;
+
+let printNewRowFunctionTR a b = match a with 
+    (c,d,e,line) ->  
+    "\n\t\t (* Line "^ (line |> string_of_int) ^" *) \n\t\t |  " 
+    ^ ( c |> getTermInTuple |> printTupleFV) ^ " ->  " ^ printInnerCJ d 0 e ^ " " ^ b;;
+
+let rec changeAtomList al = match al with
+  | AtomList(Keyword("compat",pl),nxt) -> AtomList(Keyword("check",pl),changeAtomList nxt)
+  |  AtomList(a,nxt) -> AtomList(a, changeAtomList nxt)
+  | None -> None;;
+
+let rec modifyRows a = match a with
+    (c,d,line)::xs -> (c,changeAtomList d,line)::(modifyRows xs)
+  | [] -> []
+;;
+(** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
+let printRulesCheck k v = match v with 
+  | Predicate{rows = a} -> ("\t\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = (match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate (modifyRows a) "\n\t\t | _ -> false)")) |> print_endline
+  | Function{rows = a} -> ("\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionInc a "\n\t\t | _ -> None")) |> print_endline;;
+
+
+let printCheck_join t = 
+  let _ = ("let checkjoin (t : (int * VarSet.t) term) (_C : context) (rs : res list) : res option =" |> print_endline) in
+  let value = Eval.find "compat" t in 
+  (*let value = Eval.find "check" t in *)
+  let map = Eval.add "check" value (Eval.empty) in 
+  let _ = Eval.iter printRulesCheck map in
+  let _ = "in match t with" |> print_endline in 
+  let value = Eval.find "type_check" t in
+  match value with 
+    Function{rows=a} -> (List.fold_right (printNewRowFunctionTR) a "\n\t\t | _ -> failwith(\"Term not is not evaluable\");;\n\n") |> print_endline
+  | _ -> failwith "Error 1"
+;;
 
 (* Stampa un parametro *)
 let printParam v = match v with 
@@ -684,11 +743,6 @@ let printFreeVar t =
   let map = Eval.add "free_variables_cps" value (Eval.empty) in
   let _ = Eval.iter printRulesFV map in
   ( "\tin \n\tfree_variables_cps e (fun d -> d);;\n" |> print_endline)
-;;
-
-let getTermInTuple t = match t with
-  | ParamList(_,ParamList(v2,_)) -> ParamList(v2,NoneP)
-  | _ -> failwith("get Term Error")
 ;;
 
 let rec containsTypeCheck ls = 
@@ -737,7 +791,7 @@ let printTr t =
   let _ = pr ^ (
       match value with
         Function{rows=a} -> (List.fold_right printNewRowFunctionTR a "\n\t\t | _ -> failwith(\"Term not is not evaluable\");;")
-      | _ -> failwith("Error")
+      | _ -> failwith("Error 2")
     ) |> print_endline in 
   ()
 ;;

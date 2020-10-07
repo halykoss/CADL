@@ -50,7 +50,7 @@
           | "::="          { NEWTYPE }
           | ":-"           { INFERENCE }
           | ','            { COMMA }
-          | '.'            { DOT }
+          | '.'            { DOT (!num_lines)  }
           | '*'            { STAR }
           | '/'            { DIV }
           | '('            { LPAREN }

@@ -1,3 +1,16 @@
+##
+module VarSet = Set.Make(struct
+	type t = string
+	let compare = String.compare
+end);;
+
+module FunContext = Hashtbl.Make(struct
+	type t = string
+	(* let hash = Hashtbl.hash *)
+	let hash = Hashtbl.hash_param max_int max_int
+	let equal = String.equal
+end);;
+##
 term ::=  Var(string) | Num(int) | Fun(string, res, term) 
     | App(term, term) | Let(string,term,term) 
     | DeclTup([term]) | GetTup(term,term) | Nil(res) 
@@ -7,7 +20,7 @@ term ::=  Var(string) | Num(int) | Fun(string, res, term)
 and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | TypBool | TypRef(res).
 
 ##
-  let getIndexValue value = match value with Num(nr,_) -> nr | _ -> failwith "Error";;
+  let getIndexValue value = match value with Num(nr) -> nr | _ -> failwith "Error";;
 
   let varSingleton v k = k (VarSet.singleton v);;
   let union ls1 ls2 = VarSet.union ls1 ls2;;
@@ -27,13 +40,9 @@ and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | Typ
       ) > 0 then
      false else true;;
 
-  let forAllCompare func ls1 ls2 = 
-    let mapList = List.map (fun (a,b) -> (func a b)) (List.combine ls1 ls2) in
-      if List.mem None mapList then None
-      else Some (List.map (
-				fun  d -> match d with
-					| Some a -> a 
-					| None -> failwith("Not here") ) mapList)
+  let forAllCompare ls1 ls2 = 
+    let mapList = List.map (fun (a,b) -> (a == b)) (List.combine ls1 ls2) in
+        (List.fold_right (fun a b -> a && b) mapList true)
     ;;
 
   let apply v1 k e  = v1 e k;;
@@ -57,13 +66,13 @@ free_variables_cps(GetTup(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_vari
 free_variables_cps(Cons(rs,e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 free_variables_cps(PointerAss(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 
-check(TypI,TypI,TypI).
-check(TypUnit,TypUnit,TypUnit).
-check(TypBool,TypBool,TypBool).
-check(TypList(t1),TypList(t2),TypList(t)) :- check(t1,t2,t).
-check(TypRef(t1),TypRef(t2),TypRef(t)) :- check(t1,t2,t).
-check(TypF(h1,b1),TypF(h2,b2),TypF(h,b)) :- check(h1,h2,h), check(b1,b2,b).
-check(TypTu(ls1),TypTu(ls2),TypTu(ls)) :- forAllCompare(check,ls1,ls2,ls).
+@Compat(TypI, TypI).
+@Compat(TypUnit, TypUnit).
+@Compat(TypBool,TypBool).
+@Compat(TypRef(v1),TypRef(v2)) :- @Compat(v1,v2).
+@Compat(TypList(t1),TypList(t2)) :- @Compat(t1,t2).
+@Compat(TypF(t1, t2), TypF(t3,t4)) :- @Compat(t1, t3), @Compat(t2, t4).
+@Compat(TypTu(t1),TypTu(t2)) :- forAllCompare(t1,t2).
 
 type_check(C, Unit, TypUnit).
 type_check(C,Bool(b),TypBool).
