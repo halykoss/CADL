@@ -1,11 +1,12 @@
+(* //TODO: Sistemare i ForContext **)
 (** Parametro usato dentro le() delle regole e delle Formule *)
-type param = Name of string | Variable of string | Type of string * paramList | TypeS of string | List of string
+type param = Name of string | Variable of string | Type of string * paramList | TypeS of string | List of string | Every | Num of int
 (** Lista di parametri *)
 and paramList = ParamList of param * paramList | NoneP;;
 (** Dichiarazione di nuovi tipi *)
 type declarationType = Declaration of param * paramList * declarationType | EndDecl;;
 (** Fomrula atomica *)
-type atom = Atom of string * paramList | Keyword of string * paramList | Context of paramList | Add of paramList | Member of paramList | Map of paramList;;
+type atom = Atom of string * paramList | ForContext of string * paramList | Keyword of string * paramList | Context of paramList | Add of paramList | Member of paramList | Map of paramList;;
 (** Lista di formule atomiche *)
 type atomList = AtomList of atom * atomList | None;;
 
@@ -13,6 +14,7 @@ let contains_term = Hashtbl.create 123456;;
 
 let nextContext = ref 0;;
 let isCompatEnvDec = ref false;;
+let compatEnv = ref "";;
 let decTerm = ref (Declaration(Name "unit",NoneP,EndDecl));;
 (* Lista di input (Regole, Formule, Codice Ocaml Embedded, nuovi tipi ) *)
 type input = 
@@ -20,7 +22,7 @@ type input =
   | Formula of int * atom * input 
   | OcamlEmbedded of string * input 
   | DeclarationType of declarationType * input 
-  | CompatEnv of int * string * input
+  | CompatEnv of string * input
   | None;;
 
 (* Valutazione delle righe contenenti Regole e formule *)
@@ -102,10 +104,10 @@ let printContext v2 =
                 )
               | NoneP -> (
                   let (count,_) = (!nextContext,incr nextContext) in  
-                  "module E"^ (count |> string_of_int) ^ " = Map.Make("^printParam v1 ^");;\n" ^
+                  "module E"^ (count |> string_of_int) ^ " = Hashtbl.Make("^printParam v1 ^");;\n" ^
                   "type " ^ printParam v ^ " = " ^ printParam v2 ^ " E" ^ (count |> string_of_int) ^".t;;\n" ^
                   "let member"^ printParam v ^ " _C x = E"^ (count |> string_of_int) ^".find _C x ;;\n" ^
-                  "let add"^ printParam v ^ " _C x t1 = E"^ (count |> string_of_int) ^".add _C x t1;;\n"
+                  "let add"^ printParam v ^ " _C x t1 = let t = E"^ (count |> string_of_int) ^".copy _C in let _ = E"^ (count |> string_of_int) ^".add t x t1 in t;;\n"
                 )
             )
           | NoneP -> failwith("Error 6")
@@ -158,7 +160,7 @@ let print_term_edit t =
   let printTupleFinal t1 =
     let rec printTuple t1 idx = (match t1 with
           ParamList(Name v ,nxt) -> "e" ^ (idx |> string_of_int) ^(if (compare v "term") == 0 then "'" else "") ^ "," ^ printTuple nxt (idx + 1)
-        |  ParamList(List v ,nxt) -> "[e" ^ (idx |> string_of_int) ^(if (compare v "term") == 0 then "'" else "") ^ "]," ^ printTuple nxt (idx + 1)
+        |  ParamList(List v ,nxt) -> (if (compare v "term") == 0 then "[" else "") ^"e" ^ (idx |> string_of_int) ^(if (compare v "term") == 0 then "'" else "") ^ (if (compare v "term") == 0 then "]" else "")^ "," ^ printTuple nxt (idx + 1)
         | NoneP -> "a)"
         | _ -> failwith("Error 1"))
     in "(" ^ printTuple t1 0
@@ -341,7 +343,8 @@ let rec loop_rules_incremental r = match r with
     None -> Eval.empty
   | Formula(line,a,b) ->  let m = loop_rules_incremental b in (
       match a with
-        Atom(c,d) -> 
+        ForContext(c,d) 
+        | Atom(c,d) -> 
         let (lst, pl) = getLastParam d in 
         if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
       | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
@@ -350,7 +353,8 @@ let rec loop_rules_incremental r = match r with
     )
   | Rule(line,a,b,c) -> let m = loop_rules_incremental c in (
       match a with
-        Atom(d,e) -> 
+      ForContext(d,e) 
+      | Atom(d,e) -> 
         let (lst, pl) = getLastParam e in 
         if Eval.mem d m then Eval.add d (updateEvalFunction (Eval.find d m) (pl,b,lst,line)) m else Eval.add d (Function{rows = [(pl,b,lst,line)]}) m
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
@@ -358,7 +362,7 @@ let rec loop_rules_incremental r = match r with
     )
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in let m = loop_rules_incremental n in m
   | DeclarationType(dec,n) -> let _ = dec |> print_types_incremental |> print_endline in loop_rules_incremental n
-  | CompatEnv(_,s,nxt) -> let _ = s |> print_endline;isCompatEnvDec := true in loop_rules_incremental nxt;;
+  | CompatEnv(s,nxt) -> let _ = compatEnv := s;isCompatEnvDec := true in loop_rules_incremental nxt;;
 
 (***********************************************************************************************************)
 (***********************************************************************************************************)
@@ -374,7 +378,8 @@ let rec loop_rules r = match r with
     None -> Eval.empty
   | Formula(line,a,b) ->  let m = loop_rules b in (
       match a with
-        Atom(c,d) -> 
+      ForContext(c,d) 
+      | Atom(c,d) -> 
         let (lst, pl) = getLastParam d in 
         if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
       | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
@@ -383,7 +388,8 @@ let rec loop_rules r = match r with
     )
   | Rule(line,a,b,c) -> let m = loop_rules c in (
       match a with
-        Atom(d,e) -> 
+      ForContext(d,e) 
+      | Atom(d,e) -> 
         let (lst, pl) = getLastParam e in 
         if Eval.mem d m then Eval.add d (updateEvalFunction (Eval.find d m) (pl,b,lst,line)) m else Eval.add d (Function{rows = [(pl,b,lst,line)]}) m
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
@@ -391,7 +397,32 @@ let rec loop_rules r = match r with
     )
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules n
   | DeclarationType(dec,n) -> let _ = dec |> print_types |> print_endline in loop_rules n
-  | CompatEnv (_,_,nxt) -> loop_rules nxt;;
+  | CompatEnv (_,nxt) -> loop_rules nxt;;
+
+  let rec loop_rules_normal r = match r with 
+    None -> Eval.empty
+  | Formula(line,a,b) ->  let m = loop_rules_normal b in (
+      match a with
+      ForContext(c,d) 
+      | Atom(c,d) -> 
+        let (lst, pl) = getLastParam d in 
+        if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
+      | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
+      | Context(v2) -> let _ = printContext v2 |> print_endline in m
+      | _ -> failwith("Error in atom def")
+    )
+  | Rule(line,a,b,c) -> let m = loop_rules_normal c in (
+      match a with
+      ForContext(d,e) 
+      | Atom(d,e) -> 
+        let (lst, pl) = getLastParam e in 
+        if Eval.mem d m then Eval.add d (updateEvalFunction (Eval.find d m) (pl,b,lst,line)) m else Eval.add d (Function{rows = [(pl,b,lst,line)]}) m
+      | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
+      | _ -> m
+    )
+  | OcamlEmbedded(_,n) -> loop_rules_normal n
+  | DeclarationType(_,n) -> loop_rules_normal n
+  | CompatEnv (_,nxt) -> loop_rules_normal nxt;;
 
 (* Stampa una tupla con i valori contenuti *)
 let rec printTuple t = 
@@ -401,6 +432,8 @@ let rec printTuple t =
     | TypeS v1 -> v1
     | Type(v1,v2) -> v1 ^ printTuple v2
     | List v1 -> v1 ^ " list"
+    | Every -> "_"
+    | Num v1 -> v1 |> string_of_int
   in
   let rec printInnerTuple t2 = (match t2 with
         ParamList(v1,NoneP) -> printParam v1 ^ printInnerTuple NoneP
@@ -418,6 +451,8 @@ let printParams t =
     | TypeS v1 -> v1
     | Type(v1,v2) -> "(" ^ v1 ^ printTuple v2 ^ ")"
     | List v1 -> v1 ^ " list"
+    | Every -> "_"
+    | Num v1 -> v1 |> string_of_int
   in
   let rec printInnerTuple t2 = (match t2 with
         ParamList(v1,NoneP) -> printParam v1 ^ printInnerTuple NoneP
@@ -434,6 +469,8 @@ let printParam v = match v with
   | TypeS v1 ->  v1
   | Type(v1,v2) -> v1 ^ printTuple v2
   | List v1 -> v1 ^ " list"
+  | Every -> "_"
+  | Num v1 -> v1 |> string_of_int
 ;;  
 (* Stampa la riga di un predicato *)
 let rec printResult r = match r with
@@ -457,7 +494,8 @@ let rec printResultState al final =
     match al with
       AtomList(a,nxt) -> (
         match a with 
-          Atom(name, pl) -> 
+          ForContext(name,pl)
+          | Atom(name, pl) -> 
           let (lst, pl1) = getLastParam pl in 
           (
             match lst with 
@@ -583,8 +621,8 @@ let printListInputMatch4args ls =
 
 (** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
 let printRules k v = match v with 
-    Predicate{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
-  | Function{rows = a} -> ("\nlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
+    Predicate{rows = a} -> ("\nlet [@warning \"-all\"] rec " ^ k ^ " "^ printListInput3args a ^" = match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate a "\n | _ -> false;;")) |> print_endline
+  | Function{rows = a} -> ("\nlet [@warning \"-all\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunction a "\n | _ -> failwith(\"Error!\");;")) |> print_endline;;
 
 (* Itera tutte le regole valutate in modo da stamparle *)
 let print_rules r = Eval.iter printRules r;;
@@ -640,6 +678,8 @@ let printTupleFV t =
     | TypeS v1 -> v1 ^ "(a)"
     | Type(v1,v2) -> v1 ^ "(" ^ printTupIn v2
     | List v1 -> v1 ^ " list"
+    | Every -> "_"
+    | Num v1 -> v1 |> string_of_int
   in
   let rec printInnerTupleFV t2 = (match t2 with
         ParamList(v1,NoneP) -> printParam v1 ^ printInnerTupleFV NoneP
@@ -653,11 +693,7 @@ let getTermInTuple t = match t with
   | ParamList(_,ParamList(v2,_)) -> ParamList(v2,NoneP)
   | _ -> failwith("get Term Error")
 ;;
-(* 
-  // TODO: Sostituire failwith con None 
-  // TODO: Inserire la chiamata a funzioni generiche
-  // TODO: Gestire Compat come una check 
-*) 
+
 let rec printInnerCJ ls idx final = 
   let isSingular v = (
     match v with
@@ -702,8 +738,8 @@ let rec modifyRows a = match a with
 ;;
 (** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
 let printRulesCheck k v = match v with 
-  | Predicate{rows = a} -> ("\t\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput3args a ^" = (match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate (modifyRows a) "\n\t\t | _ -> false)")) |> print_endline
-  | Function{rows = a} -> ("\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionInc a "\n\t\t | _ -> None")) |> print_endline;;
+  | Predicate{rows = a} -> ("\t\tlet [@warning \"-all\"] rec " ^ k ^ " "^ printListInput3args a ^" = (match ("^ printListInputMatch3args a ^") with " ^ (List.fold_right printNewRowPredicate (modifyRows a) "\n\t\t | _ -> false)")) |> print_endline
+  | Function{rows = a} -> ("\tlet [@warning \"-all\"] rec " ^ k ^ " "^ printListInput4args a ^" = match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionInc a "\n\t\t | _ -> None")) |> print_endline;;
 
 
 let printCheck_join t = 
@@ -726,6 +762,8 @@ let printParam v = match v with
   | TypeS v1 ->  v1
   | Type(v1,v2) -> v1 ^ printTuple v2
   | List v1 -> v1 ^ " list"
+  | Every -> "_"
+  | Num v1 -> v1 |> string_of_int
 ;;  
 
 (* Stampa una nuova riga di funzione *)
@@ -734,7 +772,7 @@ let printNewRowFunctionFV a b = match a with
 
 (** Viene stampata la nuova regola differenziandole tra predicato e funzione *)
 let printRulesFV k v = match v with 
-  | Function{rows = a} -> ("\t\tlet [@warning \"-27\"] rec " ^ k ^ " "^ printListInput4args a ^" = (match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionFV a "\n\t\t | _ -> _e1 VarSet.empty)")) |> print_endline
+  | Function{rows = a} -> ("\t\tlet [@warning \"-all\"] rec " ^ k ^ " "^ printListInput4args a ^" = (match ("^ printListInputMatch4args a ^") with " ^ (List.fold_right printNewRowFunctionFV a "\n\t\t | _ -> _e1 VarSet.empty)")) |> print_endline
   | _ -> failwith("Illegal arg");;
 
 let printFreeVar t = 
@@ -747,7 +785,7 @@ let printFreeVar t =
 
 let rec containsTypeCheck ls = 
   match ls with 
-    AtomList(Atom("type_check",_),_) -> false
+    AtomList(Atom("type_check",_),_) -> false  
   | None -> true
   | AtomList(_,nxt) -> containsTypeCheck nxt
 ;;
@@ -762,6 +800,7 @@ let rec countTypeCheck ls =
 let rec notContainsContextOp ls = 
   match ls with 
     AtomList(Add(_),_) -> false
+  | AtomList(ForContext(_,_),_) -> false
   | None -> true
   | AtomList(_,nxt) -> notContainsContextOp nxt
 ;;
@@ -771,11 +810,21 @@ let isBaseCase ls = match ls with
   | None -> true
 ;;
 
-let rec printStatement t idx remain = match t with
+let rec printStatement t idx remain =
+  let isSingular v = (
+    match v with
+      Name _ -> false
+    | Variable _ -> false
+    | _ -> true
+  ) in  
+   match t with
     AtomList(Atom("type_check",ParamList(Variable fst,ls)), nxt) -> 
     let (lst,_) = getLastParam ls in "(match List.nth_opt rs " ^ ( idx |> string_of_int) ^ " with Some(" ^ ( lst|> printParam) ^ ") -> ("^ (printStatement nxt (idx + 1) (remain-1)) ^") \t| None -> _"^ fst ^")"
   | AtomList(Add(ParamList(Name v1,ParamList(v2,ParamList(v3,ParamList(v4,ParamList(v5,NoneP)))))),nxt) -> 
     "let " ^ printParam v5 ^ " = add" ^ v1 ^ " " ^ printParam v2 ^ " " ^ printParam v3 ^ " " ^ printParam v4 ^ " in " ^ printStatement nxt idx remain
+  | AtomList(ForContext(s,pl),nxt) -> 
+  let (lst,ls) = getLastParam pl in 
+  "(match " ^ s ^ " " ^ (ls |> printParams) ^ " with " ^ (lst |> printParam) ^ " -> " ^ printStatement nxt idx remain ^ (if isSingular lst then " \t | _ -> None" else "") ^ ")" 
   | None -> "failwith \"Error\""
   | AtomList(_,nxt) -> printStatement nxt idx remain;;
 

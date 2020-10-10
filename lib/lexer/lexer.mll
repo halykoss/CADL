@@ -32,17 +32,18 @@
         let id    = lower ('_'|lower|capital|digit)*
         let keywords = capital lower (lower|capital|digit)+
         let variable = capital (capital|digit)*
-        let closedEmb = '*''#'
         rule token = parse
             [' ' '\t']     { token lexbuf }     (* skip blanks *)
-          | ['\n' ]        { incr num_lines;line_start := (lexbuf |> Lexing.lexeme_end);token lexbuf }
+          | ['\n' '\r']        { incr num_lines;line_start := (lexbuf |> Lexing.lexeme_end);token lexbuf }
           | "@PrintType"   { PRINTTYPE }
           | "@CompatEnv"   { COMPATENV }
+          | ['#'] id as lxm { FORCONTEXT lxm }
           | "and"          { AND }
           | ['@'] keywords as lxm { KEYWORD lxm }
           | id as lxm { MIN lxm }
           | keywords as lxm { TYPE lxm }
           | variable as lxm { CAP lxm }
+          | digit digit* as lxm { NUM (lxm |> int_of_string) }
           | '#''#' [ ^ '#''#' ]* '#''#' as lxm { num_lines := !num_lines + 1 + (countCharInString '\n' lxm);OCAMLEMBEDDED lxm }
           | '#'             { TYPEDEFZONE }
           | '+'            { PLUS }
@@ -51,6 +52,7 @@
           | ":-"           { INFERENCE }
           | ','            { COMMA }
           | '.'            { DOT (!num_lines)  }
+          | '_'            { EVERY }
           | '*'            { STAR }
           | '/'            { DIV }
           | '('            { LPAREN }
