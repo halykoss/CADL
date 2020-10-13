@@ -1,112 +1,84 @@
-open Batteries
-
-open FunContext
-open LanguageSpecification
 
 module FunSpecification (* : LanguageSpecification *) = struct
-    (* Syntax + meta-functions *)
-    type 'a term =
-        | Unit of 'a
-        | Bool of bool * 'a
-        | Int of int * 'a
-        | Float of float * 'a
-        | Not of 'a term * 'a
-        | Neg of 'a term * 'a
-        | IBop of string * 'a term * 'a term * 'a
-        | FNeg of 'a term * 'a
-        | FBop of string * 'a term * 'a term * 'a
-        | Rel of string * 'a term * 'a term * 'a
-        | If of 'a term * 'a term * 'a term * 'a
-        | Let of string * 'a term * 'a term *'a
-        | Var of string * 'a
-        | LetRec of 'a fundef * 'a term * 'a
-        | App of 'a term * 'a term list * 'a
-        | Tuple of 'a term list * 'a
-        | LetTuple of string list * 'a term * 'a term * 'a
-        | Array of 'a term * 'a term * 'a
-        | Get of 'a term * 'a term * 'a
-        | Put of 'a term * 'a term * 'a term * 'a
-    and 'a fundef = { name : string * res; args : (string * res) list; body : 'a term }
-    and res =
-        | TUnit
-        | TBool
-        | TInt
-        | TFloat
-        | TFun of res list * res (* arguments are uncurried *)
-        | TTuple of res list
-        | TArray of res
-    and context = res FunContext.t
+
+	type  'a term = 
+		 | Var of string *  'a 
+		 | Num of int *  'a 
+		 | Fun of string * res *  'a term *  'a 
+		 | App of  'a term *  'a term *  'a 
+		 | Let of string *  'a term *  'a term *  'a 
+		 | DeclTup of  'a term list *  'a 
+		 | GetTup of int *  'a term *  'a 
+		 | Nil of res *  'a 
+		 | Unit of 'a 
+		 | Bool of bool *  'a 
+		 | IsNil of res *  'a term *  'a 
+		 | Cons of res *  'a term *  'a term *  'a 
+		 | Head of res *  'a term *  'a 
+		 | Tail of res *  'a term *  'a 
+		 | Fix of  'a term *  'a 
+		 | Ref of  'a term *  'a 
+		 | Deref of  'a term *  'a 
+		 | PointerAss of  'a term *  'a term *  'a 
+
+	 and res = 
+		 | TypI
+		 | TypUnit
+		 | TypF of res * res
+		 | TypTu of res list
+		 | TypList of res
+		 | TypBool
+		 | TypRef of res;;
 
 
-    (* ============================================================================================================== *)
+  let varSingleton v k = k (VarSet.singleton v);;
+  let union ls1 ls2 = VarSet.union ls1 ls2;;
+  let remove ss x = VarSet.remove ss x;;
+  let fold_left f1 v1 v2 = List.fold_left f1 v1 v2;;
+  let empty = VarSet.empty;;
+	let rec enumerate start final = if final == 0 then [] else (start+1) :: (enumerate (start + 1) (final - 1));;
+
+  let listMap f ls = List.map f ls;;
+
+  let rec getIndexTup idx tup = match tup with
+    | [] -> failwith("Index Error")
+    | x::xs -> if idx == 0 then x else getIndexTup (idx -1) xs;;
+
+  let tuplesEquals t1 t2 = 
+    if (
+        List.length (List.filter ( fun (a,b) -> (a <> b) ) (List.combine t1 t2))
+      ) > 0 then
+     false else true;;
+
+  let forAllCompare ls1 ls2 = 
+    let mapList = List.map (fun (a,b) -> (a == b)) (List.combine ls1 ls2) in
+        (List.fold_right (fun a b -> a && b) mapList true)
+    ;;
+
+  let apply v1 k e  = v1 e k;;
+
+type context = res FunContext.t;;
+let membercontext _C x = FunContext.find _C x;;
+let addcontext _C x t1 = FunContext.add x t1 _C;;
+
+
     let rec type_ppf ppf type_t =
-        match type_t with
-        | TUnit -> Format.fprintf ppf "unit"
-        | TInt -> Format.fprintf ppf "int"
-        | TBool -> Format.fprintf ppf "bool"
-        | TFloat -> Format.fprintf ppf "float"
-        | TArray(t) -> Format.fprintf ppf "[%a]" type_ppf t
-        | TTuple(ts) -> Format.fprintf ppf "@[<2>";
-        typelist_syntax_ppf ppf ts;
-        Format.fprintf ppf "@]"
-        | TFun(args,rt) -> Format.fprintf ppf "@[<2>";
-        typelist_syntax_ppf ppf args;
-        Format.fprintf ppf " -> %a@]" type_ppf rt
-    and typelist_syntax_ppf ppf ts =
-        Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts
-
-
-    let string_of_term ppf_annot e : string =
-        let rec ppf_term ppf_annot ppf e =
-            let ppf_tree = ppf_term ppf_annot in
-            match e with
-            | Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
-            | Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
-            | Int(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
-            | Float(f, annot)        	    -> Format.fprintf ppf "@[<2>%f{%a}@]" f ppf_annot annot
-            | Not(e, annot)          	    -> Format.fprintf ppf "@[<2>Not(%a){%a}@]" ppf_tree e ppf_annot annot
-            | Neg(e ,annot)          	    -> Format.fprintf ppf "@[<2>-(%a){%a}@]" ppf_tree e ppf_annot annot
-            | IBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | FNeg(e, annot)         	    -> Format.fprintf ppf "@[<2>-.(%a){%a}@]" ppf_tree e ppf_annot annot
-            | FBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | Rel(op, e1, e2, annot)      -> Format.fprintf ppf "@[<2>%s(%a,%a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | If(e1, e2,e3, annot)   	    -> Format.fprintf ppf "@[<2>If(%a,@,%a,@,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
-            | Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
-            | Array(e1, e2, annot)        -> Format.fprintf ppf "@[<2>Array(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | Get(e1,e2, annot)           -> Format.fprintf ppf "@[<2>Get(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
-            | Put(e1, e2, e3, annot)      -> Format.fprintf ppf "@[<2>Put(%a,%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
-            | LetRec(f, e, annot)   	    -> Format.fprintf ppf "@[<2>LetRec(%a,@,%a){%a}@]" (fundef_ppf ppf_tree) f ppf_tree e ppf_annot annot
-            | App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a," ppf_tree e;
-                                            list_syntax_ppf ppf_tree ppf es;
-                                            Format.fprintf ppf "){%a}@]" ppf_annot annot
-            | Tuple(es, annot)      	    -> Format.fprintf ppf "@[<2>Tuple(";
-                                            list_syntax_ppf ppf_tree ppf es;
-                                            Format.fprintf ppf "){%a}@]" ppf_annot annot
-            | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat " " bs)
-                                            ppf_tree e1 ppf_tree e2 ppf_annot annot
-
-        and list_syntax_ppf syntax_ppf ppf es =
-        Format.pp_print_list syntax_ppf ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ") ppf es
-
-        and fundef_ppf syntax_ppf ppf ({name = (id,t); args=formals; body=e}) =
-        Format.fprintf ppf "@[<2>FunVal((%s : %a),(" id type_ppf t;
-        list_binding_ppf ppf formals;
-        Format.fprintf ppf "),@,%a)@]"  syntax_ppf e
-
-        and list_binding_ppf ppf bs = if List.length bs > 0 then
-            let (id, t) = List.hd bs in
-            Format.fprintf ppf "%s : %a" id type_ppf t;
-            List.iter (fun (id, t) -> Format.fprintf ppf ", %s : %a" id type_ppf t) (List.tl bs);
-        else
-            ()
-        in
-        ppf_term ppf_annot Format.str_formatter e;
-        Format.flush_str_formatter ()
-
-
-    (* Use the pretty printer to extract string from a type *)
-    let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+    match type_t with
+    | TypUnit -> Format.fprintf ppf "unit"
+    | TypI -> Format.fprintf ppf "int"
+    | TypBool -> Format.fprintf ppf "bool"
+    | TypList(t) -> Format.fprintf ppf "[%a]" type_ppf t
+    | TypTu(ts) -> Format.fprintf ppf "@[<2>";
+    typelist_syntax_ppf ppf ts;
+    Format.fprintf ppf "@]"
+    | TypF(args,rt) -> Format.fprintf ppf "@[<2>";
+    type_ppf ppf args;
+    Format.fprintf ppf " -> %a@]" type_ppf rt
+    | TypRef r -> Format.fprintf ppf "@[<2>";
+    type_ppf ppf r;
+  and typelist_syntax_ppf ppf ts =
+    Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts;;
+    
 
 
     let string_of_context (gamma : context) =
@@ -117,226 +89,237 @@ module FunSpecification (* : LanguageSpecification *) = struct
         in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
 
 
-    let term_getannot t =
-        match t with
-        | Unit(annot)
-        | Bool(_, annot)
-        | Int(_, annot)
-        | Float(_, annot)
-        | Not(_, annot)
-        | Var(_, annot)
-        | Neg(_, annot)
-        | FNeg(_, annot)
-        | IBop(_,_,_, annot)
-        | FBop(_,_,_, annot)
-        | Rel(_,_,_, annot)
-        | If(_,_,_, annot)
-        | Let(_,_,_, annot)
-        | LetRec(_,_, annot)
-        | App(_,_, annot)
-        | Tuple(_, annot)
-        | LetTuple(_,_,_, annot)
-        | Array(_,_, annot)
-        | Get(_,_, annot)
-        | Put(_, _,_, annot) -> annot
+    let string_of_term ppf_annot e : string =
+        let rec ppf_term ppf_annot ppf e =
+            let ppf_tree = ppf_term ppf_annot in
+		match e with
+		| Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
+		| Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
+		| Num(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
+		| Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
+		| Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
+		| DeclTup(e1, annot)     		-> Format.fprintf ppf "@[<2>Tuple(";
+																			list_syntax_ppf ppf_tree ppf e1;
+																			Format.fprintf ppf "){%a}@]" ppf_annot annot
+		| GetTup(id,e2, annot)        -> Format.fprintf ppf "@[<2>GetTup(%d,%a){%a}@]" id ppf_tree e2 ppf_annot annot
+		| Nil(_,annot)								-> Format.fprintf ppf "@[<2>Nil(res){%a}@]" ppf_annot annot
+		| Fun(id,_,e1,annot)					-> Format.fprintf ppf "@[<2>Fun(%s,%a){%a}@]" id ppf_tree e1 ppf_annot annot
+		| App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a,@,%a){%a}@]" ppf_tree e ppf_tree es ppf_annot annot
+		| _ -> Format.fprintf ppf "Something"
+
+        and list_syntax_ppf syntax_ppf ppf es =
+        Format.pp_print_list syntax_ppf ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ") ppf es
+
+        in
+            ppf_term ppf_annot Format.str_formatter e;
+            Format.flush_str_formatter ()
+
+    (* Use the pretty printer to extract string from a type *)
+    let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
 
 
-    let term_edit (t : 'a term) (ti : ('b term) list) (a : 'b) : ('b term) =
-        match (t, ti) with
-        | (Unit(_), _) -> Unit(a)
-        | (Bool(v, _), _) -> Bool(v, a)
-        | (Int(v, _), _) -> Int(v, a)
-        | (Float(v, _), _) -> Float(v, a)
-        | (Not(e1, _), [e1']) -> Not(e1', a)
-        | (Var(x, _), _) -> Var(x, a)
-        | (Neg(e1, _), [e1']) -> Neg(e1', a)
-        | (FNeg(e1, _), [e1']) -> FNeg(e1', a)
-        | (IBop(o, e1, e2, _), [e1'; e2']) -> IBop(o, e1', e2', a)
-        | (FBop(o, e1, e2, _), [e1'; e2']) -> FBop(o, e1', e2', a)
-        | (Rel(o, e1, e2, _), [e1'; e2']) -> Rel(o, e1', e2', a)
-        | (If(b, e1, e2, _), [b'; e1'; e2']) -> If(b', e1', e2', a)
-        | (Let(x, e1, e2, annot), [e1'; e2']) -> Let(x, e1', e2', a)
-        | (LetRec({ name = (f, t); args = al; body = e1 }, e2, _), [e1'; e2']) ->
-            LetRec({ name = (f, t); args = al; body = e1' }, e2', a)
-        | (App(e1, e2, _), e1'::e2') -> App(e1', e2', a)
-        | (Tuple(e1, _), _) -> Tuple (ti, a)
-        | (LetTuple(xs, e1, e2, _), [e1'; e2']) -> LetTuple(xs, e1', e2', a)
-        | (Array(e1, e2, _), [e1'; e2']) -> Array(e1', e2', a)
-        | (Get(e1, e2, _), [e1'; e2']) -> Get(e1', e2', a)
-        | (Put(e1, e2, e3, _), [e1'; e2';e3']) -> Put(e1', e2', e3', a)
-        | _ -> failwith (Printf.sprintf "Wrong parameter list: %s." (string_of_term (fun _ _ -> ()) t))
+	let term_getannot t = 
+		match t with
+			| Var(_,annot)
+			| Num(_,annot)
+			| Fun(_,_,_,annot)
+			| App(_,_,annot)
+			| Let(_,_,_,annot)
+			| DeclTup(_,annot)
+			| GetTup(_,_,annot)
+			| Nil(_,annot)
+			| Unit annot
+			| Bool(_,annot)
+			| IsNil(_,_,annot)
+			| Cons(_,_,_,annot)
+			| Head(_,_,annot)
+			| Tail(_,_,annot)
+			| Fix(_,annot)
+			| Ref(_,annot)
+			| Deref(_,annot)
+			| PointerAss(_,_,annot) -> annot;;
+
+	let term_edit (t : 'a term) (ti : ('b term) list) (a : 'b) : ('b term) =
+		match (t, ti) with
+			| (Var(e0,_), []) -> Var(e0,a)
+			| (Num(e0,_), []) -> Num(e0,a)
+			| (Fun(e0,e1,e2,_), [e2';]) -> Fun(e0,e1,e2',a)
+			| (App(e0,e1,_), [e0';e1';]) -> App(e0',e1',a)
+			| (Let(e0,e1,e2,_), [e1';e2';]) -> Let(e0,e1',e2',a)
+			| (DeclTup(e0,_), _) -> DeclTup(ti,a)
+			| (GetTup(e0,e1,_), [e1';]) -> GetTup(e0,e1',a)
+			| (Nil(e0,_), []) -> Nil(e0,a)
+			| (Unit _, []) -> Unit a
+			| (Bool(e0,_), []) -> Bool(e0,a)
+			| (IsNil(e0,e1,_), [e1';]) -> IsNil(e0,e1',a)
+			| (Cons(e0,e1,e2,_), [e1';e2';]) -> Cons(e0,e1',e2',a)
+			| (Head(e0,e1,_), [e1';]) -> Head(e0,e1',a)
+			| (Tail(e0,e1,_), [e1';]) -> Tail(e0,e1',a)
+			| (Fix(e0,_), [e0';]) -> Fix(e0',a)
+			| (Ref(e0,_), [e0';]) -> Ref(e0',a)
+			| (Deref(e0,_), [e0';]) -> Deref(e0',a)
+			| (PointerAss(e0,e1,_), [e0';e1';]) -> PointerAss(e0',e1',a)
+			| _ -> failwith("Error");;
+
+	let rec compute_hash e = Hashtbl.hash_param max_int max_int e;;
+
+	let get_sorted_children (t : 'a term) : ((int * 'a term) list) =
+		match t with
+			| Var(_,_) -> []
+			| Num(_,_) -> []
+			| Fun(_,_,e2,_) -> [(0,e2);]
+			| App(e0,e1,_) -> [(0,e0);(1,e1);]
+			| Let(_,e1,e2,_) -> [(0,e1);(1,e2);]
+			| DeclTup(e0,_) -> [] @ ( (List.combine (enumerate 0 (List.length e0)) e0)) @ []
+			| GetTup(_,e1,_) -> [(0,e1);]
+			| Nil(_,_) -> []
+			| Unit _ -> []
+			| Bool(_,_) -> []
+			| IsNil(_,e1,_) -> [(0,e1);]
+			| Cons(_,e1,e2,_) -> [(0,e1);(1,e2);]
+			| Head(_,e1,_) -> [(0,e1);]
+			| Tail(_,e1,_) -> [(0,e1);]
+			| Fix(e0,_) -> [(0,e0);]
+			| Ref(e0,_) -> [(0,e0);]
+			| Deref(e0,_) -> [(0,e0);]
+			| PointerAss(e0,e1,_) -> [(0,e0);(1,e1);]
+			;;
+
+let compat gamma gamma' at =
+    (* Straightorward implementation from the theory: *)
+    let fv = snd (term_getannot at) in
+        VarSet.for_all (fun v -> (FunContext.find_option gamma v) = (FunContext.find_option gamma' v)) fv;;
+
+let checkjoin (t : (int * VarSet.t) term) (_C : context) (rs : res list) : res option =
+		let [@warning "-all"] rec check _e0 _e1  = (match (_e0,_e1) with 
+ (* Line 117 *) 
+ | (TypI , TypI) -> true
+ (* Line 118 *) 
+ | (TypUnit , TypUnit) -> true
+ (* Line 119 *) 
+ | (TypBool , TypBool) -> true
+ (* Line 120 *) 
+ | (TypRef(v1) , TypRef(v2)) -> check v1 v2 
+ (* Line 121 *) 
+ | (TypList(t1) , TypList(t2)) -> check t1 t2 
+ (* Line 122 *) 
+ | (TypF(t1 , t2) , TypF(t3 , t4)) -> check t1 t3  && check t2 t4 
+ (* Line 123 *) 
+ | (TypTu(t1) , TypTu(t2)) -> forAllCompare t1 t2 
+		 | _ -> false)
+in match t with
+
+		 (* Line 125 *) 
+		 |  (Unit(a)) ->   Some (TypUnit) 
+		 (* Line 126 *) 
+		 |  (Bool(b, a)) ->   Some (TypBool) 
+		 (* Line 127 *) 
+		 |  (Num(n, a)) ->   Some (TypI) 
+		 (* Line 128 *) 
+		 |  (Var(x, a)) ->  (match membercontext _C x with _T ->  Some (_T)) 
+		 (* Line 129 *) 
+		 |  (Fun(x , t1 , e, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ( Some (TypF(t1 , t2)))	| None -> None) 
+		 (* Line 130 *) 
+		 |  (App(e1 , e2, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((match List.nth_opt rs 1 with Some(t3) -> ((if check  t1 t3  then  (  Some (t2) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
+		 (* Line 131 *) 
+		 |  (Let(x , e , e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ( Some (t2))	| None -> None))	| None -> None) 
+		 (* Line 132 *) 
+		 |  (DeclTup(e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match rs with t ->  Some (TypTu(t))))	| None -> None) 
+		 (* Line 133 *) 
+		 |  (GetTup(idx , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypTu(tup)) -> ((match getIndexTup  idx tup  with t ->  Some (t))) 	| Some _ -> None 	| None -> None) 
+		 (* Line 134 *) 
+		 |  (Nil(t, a)) ->   Some (TypList(t)) 
+		 (* Line 135 *) 
+		 |  (IsNil(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ((if check  t2 (TypList(t))  then  (  Some (TypBool) ) else None))	| None -> None) 
+		 (* Line 136 *) 
+		 |  (Cons(t , exp1 , exp2, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ((if check  t t1  then  ( (if check  (TypList(t)) t2  then  (  Some (TypList(t)) ) else None) ) else None))	| None -> None))	| None -> None) 
+		 (* Line 137 *) 
+		 |  (Head(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (t) ) else None))	| None -> None) 
+		 (* Line 138 *) 
+		 |  (Tail(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (TypList(t)) ) else None))	| None -> None) 
+		 (* Line 139 *) 
+		 |  (Fix(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((if check  t1 t2  then  (  Some (t2) ) else None)) 	| Some _ -> None 	| None -> None) 
+		 (* Line 140 *) 
+		 |  (Ref(exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ( Some (TypRef(t1)))	| None -> None) 
+		 (* Line 141 *) 
+		 |  (Deref(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ( Some (t)) 	| Some _ -> None 	| None -> None) 
+		 (* Line 142 *) 
+		 |  (PointerAss(exp , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ((match List.nth_opt rs 1 with Some(t1) -> ((if check  t t1  then  (  Some (TypUnit) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
+		 | _ -> failwith("Term not is not evaluable");;
 
 
-    let compute_fv e =
-        let rec free_variables_cps e k =
-            let invRemove e s = VarSet.remove s e in
-            match e with
-                | Unit(_)
-                | Bool(_)
-                | Int(_)
-                | Float(_) -> k VarSet.empty
-                | Var(x, _) -> k (VarSet.singleton x)
-                | Not(e1, _)
-                | Neg(e1, _)
-                | FNeg(e1, _) -> free_variables_cps e1 (fun r1 -> k r1)
-                | IBop(_, e1, e2, _)
-                | FBop(_, e1, e2, _)
-                | Rel(_, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
-                | If(e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
-                | Let(x, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.remove x (VarSet.union r1 r2))))
-                | LetRec ({ name = (x, _); args = yts; body = e1 }, e2, _) ->
-                free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2) (x::(List.map fst yts)))))
-                | App (e1, es, _) -> free_variables_cps e1 (fun r1 -> k (VarSet.union r1 (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))))
-                | Tuple(es, _) -> k (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))
-                | LetTuple(xs, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2)xs)))
-                | Array(e1, e2, _)
-                | Get (e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
-                | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
-        in free_variables_cps e (fun d -> d)
+	let compute_fv (e: 'a term) : VarSet.t =
+		let [@warning "-all"] rec free_variables_cps _e0 _e1  = (match (_e0,_e1) with 
+		 (* Line 102 *) 
+		 |  (Var(x, a) , k) ->  let t = varSingleton  x k  in t
+		 (* Line 103 *) 
+		 |  (Fun(n , t , e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 104 *) 
+		 |  (App(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 (* Line 105 *) 
+		 |  (Let(x , e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in  let t4 = remove  x t3  in t4
+		 (* Line 106 *) 
+		 |  (DeclTup(ls, a) , k) ->  let f = apply  free_variables_cps k  in  let ls1 = listMap  f ls  in  let t = fold_left  union empty ls1  in t
+		 (* Line 107 *) 
+		 |  (Fix(e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 108 *) 
+		 |  (Ref(e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 109 *) 
+		 |  (Deref(e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 110 *) 
+		 |  (IsNil(rs , e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 111 *) 
+		 |  (Head(rs , e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 112 *) 
+		 |  (Tail(rs , e, a) , k) ->  let t = free_variables_cps  e k  in t
+		 (* Line 113 *) 
+		 |  (GetTup(idx , e2, a) , k) ->  let t = free_variables_cps  e2 k  in t
+		 (* Line 114 *) 
+		 |  (Cons(rs , e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 (* Line 115 *) 
+		 |  (PointerAss(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 | _ -> _e1 VarSet.empty)
+	in 
+	free_variables_cps e (fun d -> d);;
 
-
-    let rec compute_hash e = Hashtbl.hash_param max_int max_int e
-
-    let get_sorted_children e =
-        match e with
-        | Unit(_) -> []
-        | Bool(_, _)
-        | Int(_, _)
-        | Float(_, _)
-        | Var(_, _) -> []
-        | Not(e1, _)
-        | Neg(e1, _)
-        | FNeg(e1, _) -> [(0, e1)]
-        | IBop(s, e1, e2, _)
-        | FBop(s, e1, e2, _)
-        | Rel(s, e1, e2, _) -> [(0, e1); (1, e2)]
-        | If(b, e1, e2, _) -> [(0, b); (1, e1); (2, e2)]
-        | Let(s, e1, e2, _) -> [(0, e1); (1, e2)]
-        | LetRec({name=(id, rt); args=xs; body=e1}, e2, _) -> [(0, e1); (1, e2)]
-        | App(e, es, _) -> let len = List.length es in
-            (0, e)::(List.combine (List.of_enum (1--len)) es)
-        | Tuple(es, _) -> (List.combine (List.of_enum (0--^List.length es)) es)
-        | LetTuple(pat, e1, e2, _) -> [(0, e1); (1, e2)]
-        | Array(e1, e2, _)
-        | Get(e1, e2, _) -> [(0, e1); (1, e2)]
-        | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
-
-    let compat gamma gamma' at =
-        (* Straightorward implementation from the theory: *)
-        let fv = snd (term_getannot at) in
-            VarSet.for_all (fun v -> (FunContext.find_option gamma v) = (FunContext.find_option gamma' v)) fv
-
-    (* i indicates that the i-th element is being processed (0-based) *)
-    let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : context =
-        (* This will never be invoked on base cases! *)
-        match t with
-        | Unit(_) -> failwith "Tr invoked on base case: Unit"
-        | Bool(_, _)
-        | Int(_, _)
-        | Float(_, _)
-        | Var(_, _) -> failwith "Tr invoked on base case."
-        | Not(_, _)
-        | Neg(_, _)
-        | FNeg(_, _) -> gamma
-        | IBop(_, _, _, _)
-        | FBop(_, _, _, _)
-        | Rel(_, _, _, _) -> gamma
-        | If(_, _, _, _) -> gamma
-        | Let(x, e1, e2, _) ->
-            begin
-                match i with
-                | 0 -> gamma
-                | 1 -> (FunContext.add x (List.at rs 0) gamma)
-                | _ -> failwith "Wrong index for Tr in Let!"
-            end
-        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) ->
-            let gamma' = (FunContext.add x (TFun(List.map snd yts, t)) gamma) in
-            begin
-                match i with
-                | 0 -> FunContext.add_list yts gamma'
-                | 1 -> gamma'
-                | _ -> failwith "Wrong index for Tr in LetRec!"
-            end
-        | App(e, es, _) -> gamma
-        | Tuple(es, _) -> gamma
-        | LetTuple(xs, e1, e2, _) ->
-            begin
-                match i with
-                | 0 -> gamma
-                | 1 -> (match (List.at rs 0) with
-                        | TTuple(ts) -> FunContext.add_list2 xs ts gamma
-                        | _ -> failwith "Wrong type of e1 in LetTuple.")
-                | _ -> failwith "Wrong index for Tr in Let!"
-            end
-        | Array(_, _, _) -> gamma
-        | Get (_, _, _) -> gamma
-        | Put (_, _, _, _) -> gamma
-
-
-    let checkjoin (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : res option =
-        let rec check t1 t2 =
-            match (t1, t2) with
-                | (TUnit, TUnit) -> Some TUnit
-                | (TInt, TInt) -> Some TInt
-                | (TFloat, TFloat) -> Some TFloat
-                | (TBool, TBool) -> Some TBool
-                | (TArray(t1), TArray(t2)) -> (match check t1 t2 with
-                    | Some t -> Some (TArray t)
-                    | None -> None)
-                | (TTuple(ts1), TTuple(ts2)) ->
-                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
-                    if List.mem None args then None
-                    else Some (TTuple (List.map (fun (Some t) -> t) args))
-                | (TFun(ts1, tr1),TFun(ts2, tr2)) ->
-                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
-                    let trs = check tr1 tr2 in
-                    if List.mem None args then None
-                    else
-                        (match trs with
-                        | None -> None
-                        | Some t -> Some (TFun (List.map (fun (Some t) -> t) args, t)))
-                | _ -> None in
-        match t with
-        | Unit(_) -> Some TUnit
-        | Bool(_, _) -> Some TBool
-        | Int(_, _) -> Some TInt
-        | Float(_, _) -> Some TFloat
-        | Var(x, _) -> FunContext.find_option gamma x
-        | Not(e1, _) -> check (List.at rs 0) TBool
-        | Neg(e1, _) -> check (List.at rs 0) TInt
-        | FNeg(e1, _) -> check (List.at rs 0) TFloat
-        | IBop(_, e1, e2, _) -> (match (check (List.at rs 0) TInt, check (List.at rs 1) TInt) with
-            | (Some _, Some _) -> Some TInt
-            | _ -> None)
-        | FBop(_, e1, e2, _) -> (match (check (List.at rs 0) TFloat, check (List.at rs 1) TFloat) with
-            | (Some _, Some _) -> Some TFloat
-            | _ -> None)
-        | Rel(_, _, _, _) -> (match (check (List.at rs 0) (List.at rs 1)) with
-            | Some _ -> Some TBool
-            | _ -> None)
-        | If(_, _, _, _) ->
-            (match (check (List.at rs 0) TBool, check (List.at rs 1) (List.at rs 2)) with
-            | (Some _, t) -> t
-            | _ -> None)
-        | Let(x, e1, e2, _) -> Some (List.at rs 1)
-        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.at rs 1)
-        | App(e, es, _) ->
-            (
-                let ([te], tes) = List.split_at 1 rs in
-                let (TFun(ts, tr) as t) = te in
-                    match check t (TFun (tes , tr)) with
-                    | None -> None
-                    | Some _ -> Some tr
-            )
-        | Tuple(es, _) -> Some (TTuple rs) (* [ (es_0, 0), (es_1, 1), ..., (es_(len-1), len-1)] *)
-        | LetTuple(xs, e1, e2, _) -> Some (List.at rs 1)
-        | Array(_, _, _) -> (match check (List.at rs 0) TInt with
-            | None -> None
-            | Some t -> Some (TArray (List.at rs 1)))
-        | Get (_, _, _) -> (match (List.at rs 0, check TInt (List.at rs 1)) with
-            | (TArray te1, Some te2) -> Some te1
-            | _ -> None)
-        | Put (_, _, _, _) -> (match (check TInt (List.at rs 1), check (TArray(List.at rs 2)) (List.at rs 0)) with
-            | (Some te2, Some te3) -> Some TUnit
-            | _ -> None)
+	let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (_C : context) (rs : res list) : context =
+		match t with
+		 (* Line 125 *) 
+		 |  (Unit(a)) -> failwith("Tr invoked on base case") 
+		 (* Line 126 *) 
+		 |  (Bool(b, a)) -> failwith("Tr invoked on base case") 
+		 (* Line 127 *) 
+		 |  (Num(n, a)) -> failwith("Tr invoked on base case") 
+		 (* Line 128 *) 
+		 |  (Var(x, a)) -> failwith("Tr invoked on base case") 
+		 (* Line 129 *) 
+		 |  (Fun(x , t1 , e, a)) -> let _C1 = addcontext _C x t1 in (match List.nth_opt rs 0 with Some(t2) -> (failwith "Error") 	| None -> _C1) 
+		 (* Line 130 *) 
+		 |  (App(e1 , e2, a)) -> _C 
+		 (* Line 131 *) 
+		 |  (Let(x , e , e1, a)) -> (match List.nth_opt rs 0 with Some(t1) -> (let _C1 = addcontext _C x t1 in (match List.nth_opt rs 1 with Some(t2) -> (failwith "Error") 	| None -> _C1)) 	| None -> _C) 
+		 (* Line 132 *) 
+		 |  (DeclTup(e1, a)) -> _C 
+		 (* Line 133 *) 
+		 |  (GetTup(idx , exp1, a)) -> _C 
+		 (* Line 134 *) 
+		 |  (Nil(t, a)) -> failwith("Tr invoked on base case") 
+		 (* Line 135 *) 
+		 |  (IsNil(t , exp, a)) -> _C 
+		 (* Line 136 *) 
+		 |  (Cons(t , exp1 , exp2, a)) -> _C 
+		 (* Line 137 *) 
+		 |  (Head(t , exp, a)) -> _C 
+		 (* Line 138 *) 
+		 |  (Tail(t , exp, a)) -> _C 
+		 (* Line 139 *) 
+		 |  (Fix(exp, a)) -> _C 
+		 (* Line 140 *) 
+		 |  (Ref(exp, a)) -> _C 
+		 (* Line 141 *) 
+		 |  (Deref(exp, a)) -> _C 
+		 (* Line 142 *) 
+		 |  (PointerAss(exp , exp1, a)) -> _C 
+		 | _ -> failwith("Term not is not evaluable");;
 end
+
