@@ -1,31 +1,22 @@
-##
-module VarSet = Set.Make(struct
-	type t = string
-	let compare = String.compare
-end);;
-
-module FunContext = Hashtbl.Make(struct
-	type t = string
-	(* let hash = Hashtbl.hash *)
-	let hash = Hashtbl.hash_param max_int max_int
-	let equal = String.equal
-end);;
-##
+#!
+open Utilities;;
+!#
 
 term ::=  Var(string) | Num(int) | Fun(string, res, term) 
     | App(term, term) | Let(string,term,term) 
     | DeclTup([term]) | GetTup(int,term) | Nil(res) 
     | Unit | Bool(bool) | IsNil(res,term) | Cons(res,term,term)
 		| Head(res,term) | Tail(res,term) | Fix(term) | Ref(term)
-		| Deref(term) | PointerAss(term,term) | Location(term) 
+		| Deref(term) | PointerAss(term,term)
 and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | TypBool | TypRef(res).
 
 ##
   let varSingleton v k = k (VarSet.singleton v);;
   let union ls1 ls2 = VarSet.union ls1 ls2;;
-  let remove value ls = VarSet.remove value ls;;
+  let remove ss x = VarSet.remove ss x;;
   let fold_left f1 v1 v2 = List.fold_left f1 v1 v2;;
   let empty = VarSet.empty;;
+	let rec enumerate start final = if final == 0 then [] else (start+1) :: (enumerate (start + 1) (final - 1));;
 
   let listMap f ls = List.map f ls;;
 
@@ -35,7 +26,7 @@ and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | Typ
 
   let tuplesEquals t1 t2 = 
     if (
-        List.length (List.filter ( fun (a,b) -> a != b ) (List.combine t1 t2))
+        List.length (List.filter ( fun (a,b) -> (a <> b) ) (List.combine t1 t2))
       ) > 0 then
      false else true;;
 
@@ -49,6 +40,63 @@ and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | Typ
 
 @Context(context,String,res,FunContext).
 
+!!
+    let rec type_ppf ppf type_t =
+    match type_t with
+    | TypUnit -> Format.fprintf ppf "unit"
+    | TypI -> Format.fprintf ppf "int"
+    | TypBool -> Format.fprintf ppf "bool"
+    | TypList(t) -> Format.fprintf ppf "[%a]" type_ppf t
+    | TypTu(ts) -> Format.fprintf ppf "@[<2>";
+    typelist_syntax_ppf ppf ts;
+    Format.fprintf ppf "@]"
+    | TypF(args,rt) -> Format.fprintf ppf "@[<2>";
+    type_ppf ppf args;
+    Format.fprintf ppf " -> %a@]" type_ppf rt
+    | TypRef r -> Format.fprintf ppf "@[<2>";
+    type_ppf ppf r;
+  and typelist_syntax_ppf ppf ts =
+    Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts;;
+    
+
+
+    let string_of_context (gamma : context) =
+        let context_ppf ppf gamma =
+            Format.fprintf ppf "[";
+            (FunContext.iter (fun id res -> Format.fprintf ppf ", %s |> %a" id type_ppf res) gamma);
+            Format.fprintf ppf "]";
+        in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
+
+
+    let string_of_term ppf_annot e : string =
+        let rec ppf_term ppf_annot ppf e =
+            let ppf_tree = ppf_term ppf_annot in
+		match e with
+		| Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
+		| Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
+		| Num(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
+		| Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
+		| Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
+		| DeclTup(e1, annot)     		-> Format.fprintf ppf "@[<2>Tuple(";
+																			list_syntax_ppf ppf_tree ppf e1;
+																			Format.fprintf ppf "){%a}@]" ppf_annot annot
+		| GetTup(id,e2, annot)        -> Format.fprintf ppf "@[<2>GetTup(%d,%a){%a}@]" id ppf_tree e2 ppf_annot annot
+		| Nil(_,annot)								-> Format.fprintf ppf "@[<2>Nil(res){%a}@]" ppf_annot annot
+		| Fun(id,_,e1,annot)					-> Format.fprintf ppf "@[<2>Fun(%s,%a){%a}@]" id ppf_tree e1 ppf_annot annot
+		| App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a,@,%a){%a}@]" ppf_tree e ppf_tree es ppf_annot annot
+		| _ -> Format.fprintf ppf "Something"
+
+        and list_syntax_ppf syntax_ppf ppf es =
+        Format.pp_print_list syntax_ppf ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ") ppf es
+
+        in
+            ppf_term ppf_annot Format.str_formatter e;
+            Format.flush_str_formatter ()
+
+    (* Use the pretty printer to extract string from a type *)
+    let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+!!
+
 free_variables_cps(Var(x),k,t) :- varSingleton(x,k,t).
 free_variables_cps(Fun(n,t,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(App(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
@@ -57,7 +105,6 @@ free_variables_cps(DeclTup(ls),k,t) :- apply(free_variables_cps,k,f), listMap(f,
 free_variables_cps(Fix(e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Ref(e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Deref(e),k,t) :- free_variables_cps(e,k,t).
-free_variables_cps(Location(e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(IsNil(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Head(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(Tail(rs,e),k,t) :- free_variables_cps(e,k,t).

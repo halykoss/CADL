@@ -1,4 +1,3 @@
-(* //TODO: Sistemare i ForContext **)
 (** Parametro usato dentro le() delle regole e delle Formule *)
 type param = Name of string | Variable of string | Type of string * paramList | TypeS of string | List of string | Every | Num of int
 (** Lista di parametri *)
@@ -21,6 +20,8 @@ type input =
     Rule of int * atom * atomList * input 
   | Formula of int * atom * input 
   | OcamlEmbedded of string * input 
+  | OceNotInc of string * input
+  | OnlyInc of string * input
   | DeclarationType of declarationType * input 
   | CompatEnv of string * input
   | None;;
@@ -99,15 +100,15 @@ let printContext v2 =
                 ParamList(v3,_) -> (
 
                   "type " ^ printParam v ^ " = " ^ printParam v2 ^ " "^ printParam v3 ^".t;;\n" ^
-                  "let member"^ printParam v ^ " _C x = "^ printParam v3 ^".find _C x ;;\n" ^
-                  "let add"^ printParam v ^ " _C x t1 = let t = "^ printParam v3 ^".copy _C in let _ = "^ printParam v3 ^".add t x t1 in t;;\n"
+                  "let member"^ printParam v ^ " _C x = "^ printParam v3 ^".find _C x;;\n" ^
+                  "let add"^ printParam v ^ " _C x t1 = "^ printParam v3 ^".add x t1 _C;;\n"
                 )
               | NoneP -> (
                   let (count,_) = (!nextContext,incr nextContext) in  
                   "module E"^ (count |> string_of_int) ^ " = Hashtbl.Make("^printParam v1 ^");;\n" ^
                   "type " ^ printParam v ^ " = " ^ printParam v2 ^ " E" ^ (count |> string_of_int) ^".t;;\n" ^
                   "let member"^ printParam v ^ " _C x = E"^ (count |> string_of_int) ^".find _C x ;;\n" ^
-                  "let add"^ printParam v ^ " _C x t1 = let t = E"^ (count |> string_of_int) ^".copy _C in let _ = E"^ (count |> string_of_int) ^".add t x t1 in t;;\n"
+                  "let add"^ printParam v ^ " _C x t1 = E"^ (count |> string_of_int) ^".add x t1 _C;;\n"
                 )
             )
           | NoneP -> failwith("Error 6")
@@ -160,7 +161,8 @@ let print_term_edit t =
   let printTupleFinal t1 =
     let rec printTuple t1 idx = (match t1 with
           ParamList(Name v ,nxt) -> "e" ^ (idx |> string_of_int) ^(if (compare v "term") == 0 then "'" else "") ^ "," ^ printTuple nxt (idx + 1)
-        |  ParamList(List v ,nxt) -> (if (compare v "term") == 0 then "[" else "") ^"e" ^ (idx |> string_of_int) ^(if (compare v "term") == 0 then "'" else "") ^ (if (compare v "term") == 0 then "]" else "")^ "," ^ printTuple nxt (idx + 1)
+        |  ParamList(List v ,nxt) -> 
+          (if (compare v "term") == 0 then "ti" else ("e" ^ (idx |> string_of_int))) ^ "," ^ printTuple nxt (idx + 1)
         | NoneP -> "a)"
         | _ -> failwith("Error 1"))
     in "(" ^ printTuple t1 0
@@ -183,7 +185,6 @@ let print_term_edit t =
     let rec printListEdit v1 idx = (
       match v1 with
         ParamList(Name v1, nxt) -> (if (compare v1 "term") == 0 then "e" ^(idx |> string_of_int) ^ "';" else "" ) ^  printListEdit nxt (idx + 1)
-      |  ParamList(List v1, nxt) -> (if (compare v1 "term") == 0 then "e" ^(idx |> string_of_int) ^ "';" else "" ) ^  printListEdit nxt (idx + 1)
       | NoneP -> ""
       | ParamList(_, nxt) -> "" ^ printListEdit nxt (idx + 1)
     ) in (
@@ -191,9 +192,20 @@ let print_term_edit t =
       | Type(_,v2) -> printListEdit v2 0
       | _ -> "")
   in 
+  let contains_term_list ls = (
+    let rec check_term_list ls = 
+        match ls with
+        ParamList(List _, _) -> true
+        | ParamList(_,nxt) -> check_term_list nxt
+        | NoneP -> false
+      in
+    match ls with
+      Type(_,v2) -> check_term_list v2
+      | _ -> false
+  ) in
   let rec printRowAnnot t1 = (
     match t1 with 
-    | ParamList(p,nxt) -> "\n\t\t\t| (" ^ printParam p ^", ["^ printList p ^"]) -> " ^ printParamFinal p ^ printRowAnnot  nxt
+    | ParamList(p,nxt) -> "\n\t\t\t| (" ^ printParam p ^", "^ (if contains_term_list p then "_"  else "["^ printList p ^"]") ^") -> " ^ printParamFinal p ^ printRowAnnot  nxt
     | NoneP -> "\n\t\t\t| _ -> failwith(\"Error\");;"
   ) in
   match t with 
@@ -206,6 +218,7 @@ let print_get_sorted_children t =
   let printTupleEdit t1 =
     let rec printTuple t1 idx = (match t1 with
         | ParamList(Name v,nxt) -> (if (compare v "term") == 0 then "e" ^ (idx |> string_of_int) else "_") ^ "," ^ printTuple nxt (idx + 1)
+        | ParamList(List v,nxt) -> (if (compare v "term") == 0 then "e" ^ (idx |> string_of_int) else "_") ^ "," ^ printTuple nxt (idx + 1)
         |  ParamList(_ ,nxt) ->"_," ^ printTuple nxt (idx + 1)
         | NoneP -> "_)")
     in "(" ^ printTuple t1 0
@@ -221,8 +234,12 @@ let print_get_sorted_children t =
     let rec printListEdit v1 idx count = (
       match v1 with
         ParamList(Name v1, nxt) -> 
-        (if (compare v1 "term") == 0 then "(" ^(count |> string_of_int) ^ ",e"^ (idx |> string_of_int) ^");" else "" ) ^  
-        (printListEdit nxt (idx + 1) (if (compare v1 "term") == 0 then count + 1 else count ))
+          (if (compare v1 "term") == 0 then "(" ^(count |> string_of_int) ^ ",e"^ (idx |> string_of_int) ^");" else "" ) ^  
+          (printListEdit nxt (idx + 1) (if (compare v1 "term") == 0 then count + 1 else count ))
+      | 
+        ParamList(List v1, nxt) -> 
+          (if (compare v1 "term") == 0 then "] @ ( (List.combine (enumerate 0 (List.length e"^ (idx |> string_of_int) ^")) e"^ (idx |> string_of_int) ^")) @ [" else "" ) ^  
+          (printListEdit nxt (idx + 1) (if (compare v1 "term") == 0 then count + 1 else count ))
       | NoneP -> ""
       | ParamList(_, nxt) -> "" ^ printListEdit nxt (idx + 1) count
     ) in (
@@ -341,6 +358,7 @@ let print_types_incremental t =
 
 let rec loop_rules_incremental r = match r with 
     None -> Eval.empty
+  | Formula(_,Context(v2),b) -> let _ = printContext v2 |> print_endline in loop_rules_incremental b
   | Formula(line,a,b) ->  let m = loop_rules_incremental b in (
       match a with
         ForContext(c,d) 
@@ -362,6 +380,8 @@ let rec loop_rules_incremental r = match r with
     )
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in let m = loop_rules_incremental n in m
   | DeclarationType(dec,n) -> let _ = dec |> print_types_incremental |> print_endline in loop_rules_incremental n
+  | OceNotInc(_,n) -> loop_rules_incremental n
+  | OnlyInc(s,n) -> let _ = s |> print_endline in loop_rules_incremental n
   | CompatEnv(s,nxt) -> let _ = compatEnv := s;isCompatEnvDec := true in loop_rules_incremental nxt;;
 
 (***********************************************************************************************************)
@@ -376,6 +396,7 @@ let rec loop_rules_incremental r = match r with
 (* Prende in input l'AST e restuisce una mappa che associata al nome della regola una lista di coppie tuple => Lista di atomici (tuple sono i valori matchati in Ocaml e la lista di atomici le operazioni da fare) *)
 let rec loop_rules r = match r with 
     None -> Eval.empty
+    | Formula(_,Context(v2),b) -> let _ = printContext v2 |> print_endline in loop_rules b
   | Formula(line,a,b) ->  let m = loop_rules b in (
       match a with
       ForContext(c,d) 
@@ -396,7 +417,9 @@ let rec loop_rules r = match r with
       | _ -> m
     )
   | OcamlEmbedded(s,n) -> let _ = s |> print_endline in loop_rules n
+  | OceNotInc(s,n) -> let _ = s |> print_endline in loop_rules n
   | DeclarationType(dec,n) -> let _ = dec |> print_types |> print_endline in loop_rules n
+  | OnlyInc(_,nxt)
   | CompatEnv (_,nxt) -> loop_rules nxt;;
 
   let rec loop_rules_normal r = match r with 
@@ -408,7 +431,7 @@ let rec loop_rules r = match r with
         let (lst, pl) = getLastParam d in 
         if Eval.mem c m then Eval.add c (updateEvalFunction (Eval.find c m) (pl,None,lst,line)) m else Eval.add c (Function{rows = [(pl,None,lst,line)]}) m
       | Keyword(c,d) -> if Eval.mem c m then Eval.add c (updateEvalPredicate (Eval.find c m) (d,None,line)) m else Eval.add c (Predicate{rows = [(d,None,line)]}) m
-      | Context(v2) -> let _ = printContext v2 |> print_endline in m
+      | Context(_) -> m
       | _ -> failwith("Error in atom def")
     )
   | Rule(line,a,b,c) -> let m = loop_rules_normal c in (
@@ -420,8 +443,10 @@ let rec loop_rules r = match r with
       | Keyword(d,e) -> if Eval.mem d m then Eval.add d (updateEvalPredicate (Eval.find d m) (e,b,line)) m else Eval.add d (Predicate{rows = [(e,b,line)]}) m
       | _ -> m
     )
-  | OcamlEmbedded(_,n) -> loop_rules_normal n
-  | DeclarationType(_,n) -> loop_rules_normal n
+  | OcamlEmbedded(_,nxt)
+  | DeclarationType(_,nxt)
+  | OceNotInc(_,nxt)
+  | OnlyInc(_,nxt)
   | CompatEnv (_,nxt) -> loop_rules_normal nxt;;
 
 (* Stampa una tupla con i valori contenuti *)

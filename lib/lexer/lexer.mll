@@ -44,6 +44,8 @@
           | keywords as lxm { TYPE lxm }
           | variable as lxm { CAP lxm }
           | digit digit* as lxm { NUM (lxm |> int_of_string) }
+          | '#''!' [ ^ '!''#' ]* '!''#' as lxm { num_lines := !num_lines + 1 + (countCharInString '\n' lxm);OCENOTINC lxm }
+          | '!''!' [ ^ '!''!' ]* '!''!' as lxm { num_lines := !num_lines + 1 + (countCharInString '\n' lxm);ONLYINC lxm }
           | '#''#' [ ^ '#''#' ]* '#''#' as lxm { num_lines := !num_lines + 1 + (countCharInString '\n' lxm);OCAMLEMBEDDED lxm }
           | '#'             { TYPEDEFZONE }
           | '+'            { PLUS }

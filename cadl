@@ -23,7 +23,7 @@ else
 fi
 
 mkdir generated
-echo "(library (name generated))" >> generated/dune
+echo "(library (name generated) (libraries utilities))" >> generated/dune
 mv ${ofile} generated
 
 if [[ " ${myArray[@]} " =~ " ${testing} " ]]; then

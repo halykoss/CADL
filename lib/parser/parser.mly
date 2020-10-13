@@ -1,7 +1,7 @@
         %{
           open Grammar
         %}      
-        %token <string> MIN CAP KEYWORD TYPE OCAMLEMBEDDED FORCONTEXT
+        %token <string> MIN CAP KEYWORD TYPE OCAMLEMBEDDED FORCONTEXT OCENOTINC ONLYINC
         %token PLUS MINUS TIMES DIV
         %token LPAREN RPAREN
         %token INFERENCE
@@ -32,6 +32,8 @@
         input:
             /* lambda */                                { None }
         |   OCAMLEMBEDDED input                         { OcamlEmbedded(String.sub $1 2 ((String.length $1) - 4),$2) }
+        |   OCENOTINC input                         { OceNotInc(String.sub $1 2 ((String.length $1) - 4),$2) }
+        |   ONLYINC input                         { OnlyInc(String.sub $1 2 ((String.length $1) - 4),$2) }
         |   param NEWTYPE param ls_def_type next_type DOT input   { DeclarationType(Declaration($1,ParamList($3,$4),$5),$7) }
         |   atom DOT input                              { Formula($2,$1,$3) }
         |   COMPATENV OCAMLEMBEDDED input               { CompatEnv(String.sub $2 2 ((String.length $2) - 4),$3)}

@@ -1,23 +1,11 @@
 open Lib
 module SS = Set.Make(String);;
 
-let decl = "module VarSet = Set.Make(struct
-	type t = string
-	let compare = String.compare
-end);;\n
-module FunContext = Hashtbl.Make(struct
-	type t = string
-	let compare = String.compare
-	(* let hash = Hashtbl.hash *)
-	let hash = Hashtbl.hash_param max_int max_int
-	let equal = String.equal
-end);;\n";;
-
 let compatEnv = "
 let compat gamma gamma' at =
     (* Straightorward implementation from the theory: *)
     let fv = snd (term_getannot at) in
-        VarSet.for_all (fun v -> (FunContext.find_opt gamma v) = (FunContext.find_opt gamma' v)) fv;;\n";;
+        VarSet.for_all (fun v -> (FunContext.find_option gamma v) = (FunContext.find_option gamma' v)) fv;;\n";;
 
 let in_channel = open_in (Sys.argv.(1)) in
 let lexbuf = Lexing.from_channel in_channel in
@@ -26,6 +14,8 @@ let lexbuf = Lexing.from_channel in_channel in
    try 
      if  (compare Sys.argv.(2) "inc") == 0 then 
        (
+         let _ = "" |> print_endline in
+         "module FunSpecification (* : LanguageSpecification *) = struct\n" |> print_endline;
          let evaluated = result |> Grammar.loop_rules_incremental in
          let ev = result |> Grammar.loop_rules_normal in
          let rs = Grammar.Eval.remove "type_check" ev in
@@ -34,7 +24,6 @@ let lexbuf = Lexing.from_channel in_channel in
          let rs = Grammar.Eval.remove "free_variables_cps" rs in
          let _ = rs |> Grammar.print_rules in
          let _ = "" |> print_endline in
-         "module FunSpecification (* : LanguageSpecification *) = struct" |> print_endline;
          let _ = !(Grammar.decTerm) |> Grammar.print_term_getannot |> print_endline  in 
          let _ = !(Grammar.decTerm) |> Grammar.print_term_edit |> print_endline  in 
          let _ = "\n\tlet rec compute_hash e = Hashtbl.hash_param max_int max_int e;;" |> print_endline in
