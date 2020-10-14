@@ -27,5 +27,21 @@ echo "(library (name generated) (libraries utilities))" >> generated/dune
 mv ${ofile} generated
 
 if [[ " ${myArray[@]} " =~ " ${testing} " ]]; then
-    dune runtest
+    name_file="input.ml"
+    if [ "$#" -eq 3 ]; then
+        name_file=$3
+    fi
+
+    if test -f "test/test.ml"; then
+        echo "test.ml already exists. You must rename it to proceed!"
+        exit 1
+    fi
+    touch test/test.ml
+    cp $name_file test/test.ml
+    dune runtest  
+    rm -rf test/test.ml   
+    printf "\n"
 fi
+
+
+
