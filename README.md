@@ -44,10 +44,10 @@ esempio di **\<input-file\>** è _samples/input.pl_.
 
 Verrà quindi generato un modulo '__generated/__' dentro cui '__generated.ml__' conterrà il codice compilato.
 
-Per eseguire una batteria di test basta modificare '__test/test.ml__' e poi eseguire:
+Per eseguire una batteria di test basta eseguire il seguente comando:
 
 ```
-$ ./cadl <input-file> -t
+$ ./cadl <input-file> -t <path-a-file-ml-di-test>
 ```
 
 Se, invece, si volesse generare il modulo da integrare con [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) eseguire:
