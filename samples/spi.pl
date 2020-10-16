@@ -32,16 +32,50 @@ let rec setAddSingleton ls = match ls with
 
 ##
 
-@Context(context,String,res,FunContext).
+@Context(context,String,tres,FunContext).
 
-@CompatEnv
-##
-let compat gamma gamma' at =
-    (* Straightorward implementation from the theory: *)
-    let fv = snd (term_getannot at) in
-        VarSet.for_all (fun v -> (E1.find_opt gamma v) = (E1.find_opt gamma' v)) fv;;
-##
+!!
+    let rec type_ppf ppf type_t =
+    match type_t with
+	Tok -> Format.fprintf ppf "Ok";;
+    
+    let rec type_t_ppf ppf type_t =
+    match type_t with
+	Tsec -> Format.fprintf ppf "Secret"
+	| Tpub -> Format.fprintf ppf "Public"
+	| Tany -> Format.fprintf ppf "Any";;
 
+
+    let string_of_context (gamma : context) =
+        let context_ppf ppf gamma =
+            Format.fprintf ppf "[";
+            (FunContext.iter (fun id res -> Format.fprintf ppf ", %s |> %a" id type_t_ppf res) gamma);
+            Format.fprintf ppf "]";
+        in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
+
+
+    let string_of_term ppf_annot e : string =
+        let rec ppf_term ppf_annot ppf e =
+            let ppf_tree = ppf_term ppf_annot in
+		match e with
+		| Zero(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
+		| Parallel(e1,e2,annot)		  -> Format.fprintf ppf "@[<2>Parallel(%a,@,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+		| Replication(e1,annot)		  -> Format.fprintf ppf "@[<2>Replication(%a){%a}@]" ppf_tree e1 ppf_annot annot
+		| Output(_,_,e3,annot)		  -> Format.fprintf ppf "@[<2>Output(t,t list,%a){%a}@]" ppf_tree e3 ppf_annot annot
+		| Input(_,_,e3,annot)		  -> Format.fprintf ppf "@[<2>Input(t,string list,%a){%a}@]" ppf_tree e3 ppf_annot annot
+		| Restriction(_,e2,e3,annot)      -> Format.fprintf ppf "@[<2>Restriction(string,%a,%a){%a}@]" type_t_ppf e2  ppf_tree e3 ppf_annot annot
+		| Match(_,_,e3,annot)		  -> Format.fprintf ppf "@[<2>Input(t,t, %a){%a}@]" ppf_tree e3 ppf_annot annot
+		| Splitting(x1,x2,_,e3,annot)     -> Format.fprintf ppf "@[<2>Splitting(%s,%s,t,%a){%a}@]" x1 x2 ppf_tree e3 ppf_annot annot
+		| IntCase(_,e1,_,e2,annot)        -> Format.fprintf ppf "@[<2>IntCase(t,%a,string,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+		| Skd(_,_,_,e2,annot)             -> Format.fprintf ppf "@[<2>Skd(t,string list,t,%a){%a}@]" ppf_tree e2 ppf_annot annot
+    
+        in
+            ppf_term ppf_annot Format.str_formatter e;
+            Format.flush_str_formatter ()
+
+    (* Use the pretty printer to extract string from a type *)
+    let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+!!
 @Subsumption(Tany,Tany).
 @Subsumption(Tany,_).
 @Subsumption(_,Tany).
@@ -104,12 +138,12 @@ applyDec(Tsec,l,E,ls,E4) :-
   @Add(context,E1,v2,Tany,E2), @Add(context,E2,v3,Tpub,E3), @Add(context,E3,v4,Tany,E4).
 
 type_check(C,Zero,Tok).
-type_check(C,Parallel(p1,q1),Tok) :- type_check(C,p1,t), type_check(C,q1,t1), @Compat(t,t1).
-type_check(C,Replication(p1),t) :- type_check(C,p1,t).
-type_check(C,Splitting(x1,x2,t1,v1),tf) :- #t_check(C,t1,t), @Add(context,C,x1,t,E1), @Add(context,E1,x2,t,E2), type_check(E2,v1,tf).
-type_check(C,Match(v1,v2,v3),t) :- t_check(C,v1,t1),t_check(C,v2,t2),@Tcompat(t1,t2), type_check(C,v3,t).
-type_check(C,IntCase(v1,v2,x,v4),t2) :- #t_check(C,v1,t1), type_check(C,v2,t2), @Add(context,C,x,t1,E1), type_check(E1,v4,t3), @Compat(t2,t3).
-type_check(C,Output(t1,ls,t2),t) :- t_check(C,t1,t3), applyOut(C,t3,ls,t_check,subsumption,t), type_check(C,t2,t).
-type_check(C,Restriction(id,r,t1),t) :- @Add(context,C,id,r,E1), type_check(E1,t1,t).
-type_check(C,Input(m,ls,p),t) :- #t_check(C,m,t1),#applyIn(t1,C,ls,E1), type_check(E1,p,t).
-type_check(C,Skd(l,ls,n,p),t) :- #t_check(C,l,l1), #t_check(C,n,n1), #applyDec(n1,l1,C,ls,E1), type_check(E1,p,t).
+type_check(C,Parallel(p1,q1),Tok) :- type_check(C,p1,res), type_check(C,q1,t1), @Compat(res,t1).
+type_check(C,Replication(p1),Tok) :- type_check(C,p1,res).
+type_check(C,Splitting(x1,x2,t1,v1),Tok) :- #t_check(C,t1,res), @Add(context,C,x1,res,E1), @Add(context,E1,x2,res,E2), type_check(E2,v1,tf).
+type_check(C,Match(v1,v2,v3),Tok) :- t_check(C,v1,t1),t_check(C,v2,t2),@Tcompat(t1,t2), type_check(C,v3,res).
+type_check(C,IntCase(v1,v2,x,v4),Tok) :- #t_check(C,v1,t1), type_check(C,v2,t2), @Add(context,C,x,t1,E1), type_check(E1,v4,t3), @Compat(t2,t3).
+type_check(C,Output(t1,ls,t2),Tok) :- t_check(C,t1,t3), applyOut(C,t3,ls,t_check,subsumption,res), type_check(C,t2,res1).
+type_check(C,Restriction(id,r,t1),Tok) :- @Add(context,C,id,r,E1), type_check(E1,t1,res).
+type_check(C,Input(m,ls,p),Tok) :- #t_check(C,m,t1),#applyIn(t1,C,ls,E1), type_check(E1,p,res).
+type_check(C,Skd(l,ls,n,p),Tok) :- #t_check(C,l,l1), #t_check(C,n,n1), #applyDec(n1,l1,C,ls,E1), type_check(E1,p,res).

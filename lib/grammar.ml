@@ -195,7 +195,7 @@ let print_term_edit t =
   let contains_term_list ls = (
     let rec check_term_list ls = 
         match ls with
-        ParamList(List _, _) -> true
+        ParamList(List t, nxt) -> if (compare t "term") == 0 then true else check_term_list nxt
         | ParamList(_,nxt) -> check_term_list nxt
         | NoneP -> false
       in
@@ -776,7 +776,7 @@ let printCheck_join t =
   let _ = "in match t with" |> print_endline in 
   let value = Eval.find "type_check" t in
   match value with 
-    Function{rows=a} -> (List.fold_right (printNewRowFunctionTR) a "\n\t\t | _ -> failwith(\"Term not is not evaluable\");;\n\n") |> print_endline
+    Function{rows=a} -> (List.fold_right (printNewRowFunctionTR) a "\n\t\t;;\n\n") |> print_endline
   | _ -> failwith "Error 1"
 ;;
 
@@ -864,7 +864,7 @@ let printTr t =
   let value = Eval.find "type_check" t in
   let _ = pr ^ (
       match value with
-        Function{rows=a} -> (List.fold_right printNewRowFunctionTR a "\n\t\t | _ -> failwith(\"Term not is not evaluable\");;")
+        Function{rows=a} -> (List.fold_right printNewRowFunctionTR a "\n\t\t;;")
       | _ -> failwith("Error 2")
     ) |> print_endline in 
   ()
