@@ -1,0 +1,1 @@
+(n as public) in let (x1,x2) = succ(nil) in ( n |> [x1, x2] in nil)

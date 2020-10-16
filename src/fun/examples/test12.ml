@@ -1,0 +1,1 @@
+(n as public) in (case {succ(nil),succ(succ(nil)),nil} (nil) of {x1,x2,x3,x4} (n) in x1 |> [x2,x3,x4] in nil)

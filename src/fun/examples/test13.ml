@@ -1,0 +1,1 @@
+(key as secret) in case nil of {x1,x2,x3,x4} (key) in x1 |> [x2,x3,x4] in nil

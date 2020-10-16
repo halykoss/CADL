@@ -6,38 +6,19 @@ module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.
 open FunSpecification.FunSpecification
 
 let initial_gamma_list = [
-  "print_int" ,     TFun([TInt], TUnit) ;
-  "print_newline" , TFun([TUnit], TUnit) ;
-  "int_of_float",   TFun([TFloat], TInt) ;
-  "float_of_int",   TFun([TInt], TFloat) ;
-  "sin",            TFun([TFloat], TFloat) ;
-  "cos",            TFun([TFloat], TFloat) ;
-  "sqrt",           TFun([TFloat], TFloat) ;
-  "abs_float",      TFun([TFloat], TFloat) ;
-  "truncate",       TFun([TFloat], TInt);
 ]
 
 let rec nodecount e = match e with
-  | Unit(annot)
-  | Bool(_, annot)
-  | Int(_, annot)
-  | Float(_, annot)
-  | Var(_, annot) -> 1
-  | Not(e1, annot)
-  | Neg(e1, annot)
-  | FNeg(e1, annot) -> 1 + nodecount e1
-  | IBop(_, e1, e2, annot)
-  | FBop(_, e1, e2, annot)
-  | Rel(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
-  | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
-  | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
-  | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
-  | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
-  | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
-  | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
-  | Array(e1, e2, annot)
-  | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
-  | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
+    Zero(annot)   -> 1
+  | Output(_,_,e1,annot)
+  | Input(_,_,e1,annot)
+  | Skd(_,_,_,e1,annot) 
+  | Match(_,_,e1,annot)
+  | Splitting(_,_,_,e1,annot)
+  | Restriction(_,_,e1,annot) 
+  | Replication(e1,annot)	-> 1 + nodecount e1
+  | IntCase(_,e1,_,e2,annot) 
+  |  Parallel(e1,e2,annot) -> 1 + nodecount e1 + nodecount e2
 
 let analyze_expr (file : string) (filem : string) =
     Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem;

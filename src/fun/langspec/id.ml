@@ -16,13 +16,7 @@ let genid s =
   Printf.sprintf "%s.%d" s !counter
 
 let rec id_of_typ = function
-  | TUnit -> "u"
-  | TBool -> "b"
-  | TInt -> "i"
-  | TFloat -> "d"
-  | TFun _ -> "f"
-  | TTuple _ -> "t"
-  | TArray _ -> "a"
+  | Tok -> "ok"
 
 let gentmp typ =
   incr counter;

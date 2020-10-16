@@ -1,0 +1,1 @@
+(key as secret) in (some as any) in (key |> [key, some,nil] in nil)

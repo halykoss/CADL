@@ -77,8 +77,6 @@ rule token = parse
     { REC }
 | ','
     { COMMA }
-| '_'
-    { IDENT(Id.gentmp FunSpecification.TUnit) }
 | "Array.create" | "Array.make" (* [XX] ad hoc *)
     { ARRAY_CREATE }
 | '.'
@@ -91,24 +89,46 @@ rule token = parse
     { EOF }
 | ":"
     { COLON }
+| "|"
+    { PIPE }
 | "->"
     { ARROW }
 | "*"
     { AST }
-| "int"
-    { TYPE_INT }
-| "bool"
-    { TYPE_BOOL }
-| "float"
-    { TYPE_FLOAT }
-| "unit"
-    { TYPE_UNIT }
+| "succ"
+    { SUCC }
+| "nil"
+    { NIL }
+| "is"
+    { IS }
+| "case"
+    { CASE }
+| "of"
+    { OF }
+| "as"
+    { AS }
+| "|>"
+    { OUT }
+| "|<"
+    { INP }
+| "<"
+    { LANG }
+| ">"
+    { RANG }
+| "!"
+    { REPLICATION }
 | "["
     { LBRACKET }
 | "]"
     { RBRACKET }
+| "{"
+    { LBRACE }
+| "}"
+    { RBRACE }
 | "->"
     { ARROW }
+| upper (digit|lower|upper|'_')* (* Identifiers: start with lower case letters, then continue with 0 or more chars *)
+    { NAME(Lexing.lexeme lexbuf) }
 | lower (digit|lower|upper|'_')* (* Identifiers: start with lower case letters, then continue with 0 or more chars *)
     { IDENT(Lexing.lexeme lexbuf) }
 | _
