@@ -245,7 +245,7 @@ in match t with
 		 |  (Deref(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ( Some (t)) 	| Some _ -> None 	| None -> None) 
 		 (* Line 142 *) 
 		 |  (PointerAss(exp , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ((match List.nth_opt rs 1 with Some(t1) -> ((if check  t t1  then  (  Some (TypUnit) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
-		 | _ -> failwith("Term not is not evaluable");;
+		;;
 
 
 	let compute_fv (e: 'a term) : VarSet.t =
@@ -320,6 +320,6 @@ in match t with
 		 |  (Deref(exp, a)) -> _C 
 		 (* Line 142 *) 
 		 |  (PointerAss(exp , exp1, a)) -> _C 
-		 | _ -> failwith("Term not is not evaluable");;
+		;;
 end
 
