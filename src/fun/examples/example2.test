@@ -1,0 +1,1 @@
+true |> (\x:bool. let y = 8 in {x,y})

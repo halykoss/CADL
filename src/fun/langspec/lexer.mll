@@ -33,53 +33,19 @@ rule token = parse
     { BOOL(true) }
 | "false"
     { BOOL(false) }
-| "not"
-    { NOT }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
-| digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?
-    { FLOAT(float_of_string (Lexing.lexeme lexbuf)) }
-| '-' (* Int ops *)
-    { MINUS }
-| '+'
-    { PLUS }
-| "-." (* Float ops *)
-    { MINUS_DOT }
-| "+."
-    { PLUS_DOT }
-| "*."
-    { AST_DOT }
-| "/."
-    { SLASH_DOT }
-| '='
-    { EQUAL }
-| "<>"
-    { LESS_GREATER }
-| "<="
-    { LESS_EQUAL }
-| ">="
-    { GREATER_EQUAL }
-| '<'
-    { LESS }
-| '>'
-    { GREATER }
-| "if"
-    { IF }
-| "then"
-    { THEN }
-| "else"
-    { ELSE }
 | "let"
     { LET }
 | "in"
     { IN }
-| "rec"
-    { REC }
 | ','
     { COMMA }
+| '='
+    { EQUAL }
 | '_'
-    { IDENT(Id.gentmp FunSpecification.TUnit) }
-| "Array.create" | "Array.make" (* [XX] ad hoc *)
+    { IDENT(Id.gentmp FunSpecification.TypUnit) }
+| "List.create" | "List.make" (* [XX] ad hoc *)
     { ARRAY_CREATE }
 | '.'
     { DOT }
@@ -95,12 +61,24 @@ rule token = parse
     { ARROW }
 | "*"
     { AST }
+| "!"
+    { POINTER }
+| ":="
+    { POINTER_ASS }
+| "isNil"
+    { ISNIL }
+| "cons"
+    { CONS }
+| "head"
+    { HEAD }
+| "tail"
+    { TAIL }
+| "list"
+     { LIST }
 | "int"
     { TYPE_INT }
 | "bool"
     { TYPE_BOOL }
-| "float"
-    { TYPE_FLOAT }
 | "unit"
     { TYPE_UNIT }
 | "["
@@ -109,6 +87,16 @@ rule token = parse
     { RBRACKET }
 | "->"
     { ARROW }
+| "\\"
+    { LAMBDA }
+| "|>"
+    { APPLY }
+| "{"
+    {LEFTG }
+| "}"
+    { RIGHTG }
+| "ref"
+    { REF }
 | lower (digit|lower|upper|'_')* (* Identifiers: start with lower case letters, then continue with 0 or more chars *)
     { IDENT(Lexing.lexeme lexbuf) }
 | _
