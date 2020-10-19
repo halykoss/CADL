@@ -7,3 +7,6 @@
 [submodule "examples/pierce"]
 	path = examples/pierce
 	url = https://github.com/mcaos/incremental-mincaml
+[submodule "incrementalizer/pierce"]
+	path = incrementalizer/pierce
+	url = https://github.com/freek9807/CADL-Nome-provvisorio.git
