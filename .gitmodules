@@ -1,0 +1,9 @@
+[submodule "incremental-mincaml"]
+	path = incremental-mincaml
+	url = https://github.com/mcaos/incremental-mincaml
+[submodule "pierce"]
+	path = pierce
+	url = https://github.com/mcaos/incremental-mincaml
+[submodule "examples/pierce"]
+	path = examples/pierce
+	url = https://github.com/mcaos/incremental-mincaml

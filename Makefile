@@ -17,6 +17,7 @@ build:
 	$(BS) build @install
 
 clean:
+	$(MAKE) -C examples/pierce clean
 	$(BS) clean
 	rm -f lib/lexer.ml lib/parser.ml lib/parser.mli *.txt lib/generated.ml $(OFILE)
 	rm -rf generated
