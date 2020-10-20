@@ -39,6 +39,18 @@ rule token = parse
     { LET }
 | "in"
     { IN }
+| "if"
+    { IF }
+| "then"
+    { THEN }
+| "else"
+    { ELSE }
+| "rec"
+    { REC }
+| '+'
+    { PLUS }
+| '-'
+    { MINUS }
 | ','
     { COMMA }
 | '='

@@ -17,7 +17,11 @@ let rec nodecount e = match e with
   | Var(_, annot)
   | Nil(_,annot) -> 1
   | DeclTup(ls,annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount ls))
+  | Add(e1,e2,annot)
+  | Sub(e1,e2,annot)
+  | Equal(e1,e2,annot)
   | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
+  | IfThen(e1,e2,e3,annot) -> 3 + nodecount e1 + nodecount e2 + nodecount e3 
   | App (e1, es, annot) -> 1 + nodecount e1 + nodecount es
   | Fun(id,_, body, annot) -> 1 + nodecount body
   | GetTup(_,e, annot) -> 1 + nodecount e

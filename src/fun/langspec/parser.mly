@@ -106,6 +106,11 @@ exp: /* (* simple expressions *) */
 | LEFTG tup_list RIGHTG     { DeclTup($2,()) }
 | LEFTG INT ARROW exp RIGHTG      { GetTup($2,$4,()) }
 | LBRACKET type RBRACKET { Nil($2,()) }
+| exp PLUS exp { Add($1,$3,()) }
+| exp MINUS exp { Sub($1,$3,()) }
+| exp EQUAL exp { Equal($1,$3,()) }
+| LET REC IDENT COLON type EQUAL exp IN exp  %prec prec_let { Let($3,Fix(Fun($3,$5,$7,()),()),$9,()) }
+| IF exp THEN exp ELSE exp     %prec prec_if { IfThen($2,$4,$6,()) }
 | ISNIL LBRACKET type RBRACKET LPAREN exp RPAREN { IsNil($3,$6,()) }
 | CONS LBRACKET type RBRACKET LPAREN exp COMMA exp RPAREN  { Cons($3,$6,$8,())}
 | HEAD LBRACKET type RBRACKET LPAREN exp RPAREN { Head($3,$6,())}
