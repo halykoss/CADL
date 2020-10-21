@@ -208,66 +208,66 @@ let compat gamma gamma' at =
 
 let checkjoin (t : (int * VarSet.t) term) (_C : context) (rs : res list) : res option =
 		let [@warning "-all"] rec check _e0 _e1  = (match (_e0,_e1) with 
- (* Line 118 *) 
- | (TypI , TypI) -> true
- (* Line 119 *) 
- | (TypUnit , TypUnit) -> true
- (* Line 120 *) 
- | (TypBool , TypBool) -> true
- (* Line 121 *) 
- | (TypRef(v1) , TypRef(v2)) -> check v1 v2 
  (* Line 122 *) 
- | (TypList(t1) , TypList(t2)) -> check t1 t2 
+ | (TypI , TypI) -> true
  (* Line 123 *) 
- | (TypF(t1 , t2) , TypF(t3 , t4)) -> check t1 t3  && check t2 t4 
+ | (TypUnit , TypUnit) -> true
  (* Line 124 *) 
+ | (TypBool , TypBool) -> true
+ (* Line 125 *) 
+ | (TypRef(v1) , TypRef(v2)) -> check v1 v2 
+ (* Line 126 *) 
+ | (TypList(t1) , TypList(t2)) -> check t1 t2 
+ (* Line 127 *) 
+ | (TypF(t1 , t2) , TypF(t3 , t4)) -> check t1 t3  && check t2 t4 
+ (* Line 128 *) 
  | (TypTu(t1) , TypTu(t2)) -> forAllCompare t1 t2 
 		 | _ -> false)
 in match t with
 
-		 (* Line 126 *) 
-		 |  (Unit(a)) ->   Some (TypUnit) 
-		 (* Line 127 *) 
-		 |  (Bool(b, a)) ->   Some (TypBool) 
-		 (* Line 128 *) 
-		 |  (Num(n, a)) ->   Some (TypI) 
-		 (* Line 129 *) 
-		 |  (Var(x, a)) ->  (match membercontext _C x with _T ->  Some (_T)) 
 		 (* Line 130 *) 
-		 |  (Fun(x , t1 , e, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ( Some (TypF(t1 , t2)))	| None -> None) 
+		 |  (Unit(a)) ->   Some (TypUnit) 
 		 (* Line 131 *) 
-		 |  (App(e1 , e2, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((match List.nth_opt rs 1 with Some(t3) -> ((if check  t1 t3  then  (  Some (t2) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
+		 |  (Bool(b, a)) ->   Some (TypBool) 
 		 (* Line 132 *) 
-		 |  (Let(x , e , e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ( Some (t2))	| None -> None))	| None -> None) 
+		 |  (Num(n, a)) ->   Some (TypI) 
 		 (* Line 133 *) 
-		 |  (DeclTup(e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match rs with t ->  Some (TypTu(t))))	| None -> None) 
+		 |  (Var(x, a)) ->  (match membercontext _C x with _T ->  Some (_T)) 
 		 (* Line 134 *) 
-		 |  (GetTup(idx , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypTu(tup)) -> ((match getIndexTup  idx tup  with t ->  Some (t))) 	| Some _ -> None 	| None -> None) 
+		 |  (Fun(x , t1 , e, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ( Some (TypF(t1 , t2)))	| None -> None) 
 		 (* Line 135 *) 
-		 |  (Nil(t, a)) ->   Some (TypList(t)) 
+		 |  (App(e1 , e2, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((match List.nth_opt rs 1 with Some(t3) -> ((if check  t1 t3  then  (  Some (t2) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
 		 (* Line 136 *) 
-		 |  (IsNil(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ((if check  t2 (TypList(t))  then  (  Some (TypBool) ) else None))	| None -> None) 
+		 |  (Let(x , e , e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ( Some (t2))	| None -> None))	| None -> None) 
 		 (* Line 137 *) 
-		 |  (Cons(t , exp1 , exp2, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ((if check  t t1  then  ( (if check  (TypList(t)) t2  then  (  Some (TypList(t)) ) else None) ) else None))	| None -> None))	| None -> None) 
+		 |  (DeclTup(e1, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match rs with t ->  Some (TypTu(t))))	| None -> None) 
 		 (* Line 138 *) 
-		 |  (Head(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (t) ) else None))	| None -> None) 
+		 |  (GetTup(idx , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypTu(tup)) -> ((match getIndexTup  idx tup  with t ->  Some (t))) 	| Some _ -> None 	| None -> None) 
 		 (* Line 139 *) 
-		 |  (Tail(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (TypList(t)) ) else None))	| None -> None) 
+		 |  (Nil(t, a)) ->   Some (TypList(t)) 
 		 (* Line 140 *) 
-		 |  (Fix(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((if check  t1 t2  then  (  Some (t2) ) else None)) 	| Some _ -> None 	| None -> None) 
+		 |  (IsNil(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t2) -> ((if check  t2 (TypList(t))  then  (  Some (TypBool) ) else None))	| None -> None) 
 		 (* Line 141 *) 
-		 |  (Ref(exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ( Some (TypRef(t1)))	| None -> None) 
+		 |  (Cons(t , exp1 , exp2, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((match List.nth_opt rs 1 with Some(t2) -> ((if check  t t1  then  ( (if check  (TypList(t)) t2  then  (  Some (TypList(t)) ) else None) ) else None))	| None -> None))	| None -> None) 
 		 (* Line 142 *) 
-		 |  (Deref(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ( Some (t)) 	| Some _ -> None 	| None -> None) 
+		 |  (Head(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (t) ) else None))	| None -> None) 
 		 (* Line 143 *) 
-		 |  (PointerAss(exp , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ((match List.nth_opt rs 1 with Some(t1) -> ((if check  t t1  then  (  Some (TypUnit) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
+		 |  (Tail(t , exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ((if check  t1 (TypList(t))  then  (  Some (TypList(t)) ) else None))	| None -> None) 
 		 (* Line 144 *) 
-		 |  (IfThen(t1 , t2 , t3, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((if check  v1 TypBool  then  ( (match List.nth_opt rs 1 with Some(v2) -> ((match List.nth_opt rs 2 with Some(v3) -> ((if check  v2 v3  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) ) else None))	| None -> None) 
+		 |  (Fix(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypF(t1 , t2)) -> ((if check  t1 t2  then  (  Some (t2) ) else None)) 	| Some _ -> None 	| None -> None) 
 		 (* Line 145 *) 
-		 |  (Add(t1 , t2, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((match List.nth_opt rs 1 with Some(v2) -> ((if check  v1 v2  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) 
+		 |  (Ref(exp, a)) ->  (match List.nth_opt rs 0 with Some(t1) -> ( Some (TypRef(t1)))	| None -> None) 
 		 (* Line 146 *) 
-		 |  (Sub(t1 , t2, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((match List.nth_opt rs 1 with Some(v2) -> ((if check  v1 v2  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) 
+		 |  (Deref(exp, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ( Some (t)) 	| Some _ -> None 	| None -> None) 
 		 (* Line 147 *) 
+		 |  (PointerAss(exp , exp1, a)) ->  (match List.nth_opt rs 0 with Some(TypRef(t)) -> ((match List.nth_opt rs 1 with Some(t1) -> ((if check  t t1  then  (  Some (TypUnit) ) else None))	| None -> None)) 	| Some _ -> None 	| None -> None) 
+		 (* Line 148 *) 
+		 |  (IfThen(t1 , t2 , t3, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((if check  v1 TypBool  then  ( (match List.nth_opt rs 1 with Some(v2) -> ((match List.nth_opt rs 2 with Some(v3) -> ((if check  v2 v3  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) ) else None))	| None -> None) 
+		 (* Line 149 *) 
+		 |  (Add(t1 , t2, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((match List.nth_opt rs 1 with Some(v2) -> ((if check  v1 v2  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) 
+		 (* Line 150 *) 
+		 |  (Sub(t1 , t2, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((match List.nth_opt rs 1 with Some(v2) -> ((if check  v1 v2  then  (  Some (v2) ) else None))	| None -> None))	| None -> None) 
+		 (* Line 151 *) 
 		 |  (Equal(t1 , t2, a)) ->  (match List.nth_opt rs 0 with Some(v1) -> ((match List.nth_opt rs 1 with Some(v2) -> ((if check  v1 v2  then  (  Some (TypBool) ) else None))	| None -> None))	| None -> None) 
 		;;
 
@@ -302,55 +302,63 @@ in match t with
 		 |  (Cons(rs , e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
 		 (* Line 116 *) 
 		 |  (PointerAss(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 (* Line 117 *) 
+		 |  (IfThen(e1 , e2 , e3, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = free_variables_cps  e3 k  in  let t4 = union  t1 t2  in  let t5 = union  t4 t3  in t5
+		 (* Line 118 *) 
+		 |  (Add(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 (* Line 119 *) 
+		 |  (Sub(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
+		 (* Line 120 *) 
+		 |  (Equal(e1 , e2, a) , k) ->  let t1 = free_variables_cps  e1 k  in  let t2 = free_variables_cps  e2 k  in  let t3 = union  t1 t2  in t3
 		 | _ -> _e1 VarSet.empty)
 	in 
 	free_variables_cps e (fun d -> d);;
 
 	let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (_C : context) (rs : res list) : context =
 		match t with
-		 (* Line 126 *) 
-		 |  (Unit(a)) -> failwith("Tr invoked on base case") 
-		 (* Line 127 *) 
-		 |  (Bool(b, a)) -> failwith("Tr invoked on base case") 
-		 (* Line 128 *) 
-		 |  (Num(n, a)) -> failwith("Tr invoked on base case") 
-		 (* Line 129 *) 
-		 |  (Var(x, a)) -> failwith("Tr invoked on base case") 
 		 (* Line 130 *) 
-		 |  (Fun(x , t1 , e, a)) -> let _C1 = addcontext _C x t1 in (match List.nth_opt rs 0 with Some(t2) -> (failwith "Error") 	| None -> _C1) 
+		 |  (Unit(a)) -> failwith("Tr invoked on base case") 
 		 (* Line 131 *) 
-		 |  (App(e1 , e2, a)) -> _C 
+		 |  (Bool(b, a)) -> failwith("Tr invoked on base case") 
 		 (* Line 132 *) 
-		 |  (Let(x , e , e1, a)) -> (match List.nth_opt rs 0 with Some(t1) -> (let _C1 = addcontext _C x t1 in (match List.nth_opt rs 1 with Some(t2) -> (failwith "Error") 	| None -> _C1)) 	| None -> _C) 
+		 |  (Num(n, a)) -> failwith("Tr invoked on base case") 
 		 (* Line 133 *) 
-		 |  (DeclTup(e1, a)) -> _C 
+		 |  (Var(x, a)) -> failwith("Tr invoked on base case") 
 		 (* Line 134 *) 
-		 |  (GetTup(idx , exp1, a)) -> _C 
+		 |  (Fun(x , t1 , e, a)) -> let _C1 = addcontext _C x t1 in (match List.nth_opt rs 0 with Some(t2) -> (failwith "Error") 	| None -> _C1) 
 		 (* Line 135 *) 
-		 |  (Nil(t, a)) -> failwith("Tr invoked on base case") 
+		 |  (App(e1 , e2, a)) -> _C 
 		 (* Line 136 *) 
-		 |  (IsNil(t , exp, a)) -> _C 
+		 |  (Let(x , e , e1, a)) -> (match List.nth_opt rs 0 with Some(t1) -> (let _C1 = addcontext _C x t1 in (match List.nth_opt rs 1 with Some(t2) -> (failwith "Error") 	| None -> _C1)) 	| None -> _C) 
 		 (* Line 137 *) 
-		 |  (Cons(t , exp1 , exp2, a)) -> _C 
+		 |  (DeclTup(e1, a)) -> _C 
 		 (* Line 138 *) 
-		 |  (Head(t , exp, a)) -> _C 
+		 |  (GetTup(idx , exp1, a)) -> _C 
 		 (* Line 139 *) 
-		 |  (Tail(t , exp, a)) -> _C 
+		 |  (Nil(t, a)) -> failwith("Tr invoked on base case") 
 		 (* Line 140 *) 
-		 |  (Fix(exp, a)) -> _C 
+		 |  (IsNil(t , exp, a)) -> _C 
 		 (* Line 141 *) 
-		 |  (Ref(exp, a)) -> _C 
+		 |  (Cons(t , exp1 , exp2, a)) -> _C 
 		 (* Line 142 *) 
-		 |  (Deref(exp, a)) -> _C 
+		 |  (Head(t , exp, a)) -> _C 
 		 (* Line 143 *) 
-		 |  (PointerAss(exp , exp1, a)) -> _C 
+		 |  (Tail(t , exp, a)) -> _C 
 		 (* Line 144 *) 
-		 |  (IfThen(t1 , t2 , t3, a)) -> _C 
+		 |  (Fix(exp, a)) -> _C 
 		 (* Line 145 *) 
-		 |  (Add(t1 , t2, a)) -> _C 
+		 |  (Ref(exp, a)) -> _C 
 		 (* Line 146 *) 
-		 |  (Sub(t1 , t2, a)) -> _C 
+		 |  (Deref(exp, a)) -> _C 
 		 (* Line 147 *) 
+		 |  (PointerAss(exp , exp1, a)) -> _C 
+		 (* Line 148 *) 
+		 |  (IfThen(t1 , t2 , t3, a)) -> _C 
+		 (* Line 149 *) 
+		 |  (Add(t1 , t2, a)) -> _C 
+		 (* Line 150 *) 
+		 |  (Sub(t1 , t2, a)) -> _C 
+		 (* Line 151 *) 
 		 |  (Equal(t1 , t2, a)) -> _C 
 		;;
 end
