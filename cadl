@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#//TODO: Inserire Free Variable in input su nuove regole
 rm -rf generated
 myArray=("$@") 
 incremental="-i"
