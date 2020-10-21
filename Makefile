@@ -17,6 +17,8 @@ build:
 	$(BS) build @install
 
 clean:
+	$(MAKE) -C incrementalizer/pierce clean
+	$(MAKE) -C incrementalizer/spi-calculus clean
 	$(BS) clean
 	rm -f lib/lexer.ml lib/parser.ml lib/parser.mli *.txt lib/generated.ml $(OFILE)
 	rm -rf generated

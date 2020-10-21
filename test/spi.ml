@@ -66,6 +66,49 @@ let ls_to_be_tested = [
     Name "key",
     Output(Name "x1", [Var "x2"; Name "x3"; Name "x4"], Zero)
   );
-];;
-
+  (* 14. WMF revisited *)
+  Restriction("kAS",Tpub,
+  Restriction("kSB",Tpub,
+  Restriction("cSB",Tpub,
+  Restriction("cAB",Tpub,
+  Restriction("cAS",Tpub,
+  Parallel(
+      Input(
+        Name "cAS",
+        ["x"],
+        Skd(
+            Name "x",
+            ["y"],
+            Name "kAS",
+            Output(Name "cSB",[Ske([Name "y"],Name "kSB")],Zero)
+          )
+        ),
+      Parallel(
+        Restriction(
+          "kAB",
+          Tpub,
+          Output(
+            Name "cAS",[Ske([Name "kAB"],Name "kAS")],
+            Output(Name "cAB",[Ske([Zero],Name "kAB")],Zero)
+            )
+        ),
+        Input(
+          Name "cSB",
+          ["x"],
+          Skd(
+              Name "x",
+              ["y"],
+              Name "kSB",
+              Input(Name "cAB",["z"],
+              Skd(
+                  Name "z",
+                  ["w"],
+                  Name "y",
+                  Zero
+                ))
+            )
+        )
+      )
+    ))))))
+  ];;
 test_ls ls_to_be_tested 1;;

@@ -7,7 +7,8 @@ term ::=  Var(string) | Num(int) | Fun(string, res, term)
     | DeclTup([term]) | GetTup(int,term) | Nil(res) 
     | Unit | Bool(bool) | IsNil(res,term) | Cons(res,term,term)
 		| Head(res,term) | Tail(res,term) | Fix(term) | Ref(term)
-		| Deref(term) | PointerAss(term,term)
+		| Deref(term) | PointerAss(term,term) | IfThen(term,term,term) | Add(term,term) 
+    | Equal(term,term) | Sub(term,term)
 and res ::=  TypI | TypUnit | TypF(res, res) | TypTu([res]) | TypList(res) | TypBool | TypRef(res).
 
 ##
@@ -111,6 +112,10 @@ free_variables_cps(Tail(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(GetTup(idx,e2),k,t) :- free_variables_cps(e2,k,t).
 free_variables_cps(Cons(rs,e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 free_variables_cps(PointerAss(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(IfThen(e1,e2,e3),k,t5) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2),free_variables_cps(e3,k,t3), union(t1,t2,t4), union(t4,t3,t5).
+free_variables_cps(Add(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(Sub(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(Equal(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 
 @Compat(TypI, TypI).
 @Compat(TypUnit, TypUnit).
@@ -138,4 +143,7 @@ type_check(C,Fix(exp),t2) :- type_check(C,exp,TypF(t1,t2)), @Compat(t1,t2).
 type_check(C,Ref(exp),TypRef(t1)) :- type_check(C,exp,t1).
 type_check(C,Deref(exp),t) :- type_check(C,exp,TypRef(t)).
 type_check(C,PointerAss(exp,exp1),TypUnit) :- type_check(C,exp,TypRef(t)), type_check(C,exp1,t1), @Compat(t,t1).
-
+type_check(C,IfThen(t1,t2,t3),v2) :- type_check(C,t1,v1), @Compat(v1,TypBool), type_check(C,t2,v2), type_check(C,t3,v3), @Compat(v2,v3).
+type_check(C,Add(t1,t2),v2) :- type_check(C,t1,v1), type_check(C,t2,v2), @Compat(v1,v2).
+type_check(C,Sub(t1,t2),v2) :- type_check(C,t1,v1), type_check(C,t2,v2), @Compat(v1,v2).
+type_check(C,Equal(t1,t2),TypBool) :- type_check(C,t1,v1), type_check(C,t2,v2), @Compat(v1,v2).

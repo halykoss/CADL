@@ -1,0 +1,15 @@
+[submodule "incremental-mincaml"]
+	path = incremental-mincaml
+	url = https://github.com/mcaos/incremental-mincaml
+[submodule "pierce"]
+	path = pierce
+	url = https://github.com/mcaos/incremental-mincaml
+[submodule "examples/pierce"]
+	path = examples/pierce
+	url = https://github.com/mcaos/incremental-mincaml
+[submodule "incrementalizer/pierce"]
+	path = incrementalizer/pierce
+	url = https://github.com/freek9807/CADL-Nome-provvisorio.git
+[submodule "incrementalizer/spi-calculus"]
+	path = incrementalizer/spi-calculus
+	url = https://github.com/freek9807/CADL-Nome-provvisorio.git
