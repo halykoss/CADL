@@ -39,6 +39,7 @@ rule token = parse
     { LET }
 | "in"
     { IN }
+<<<<<<< HEAD
 | "if"
     { IF }
 | "then"
@@ -51,6 +52,8 @@ rule token = parse
     { PLUS }
 | '-'
     { MINUS }
+=======
+>>>>>>> fa12d5e9912abc0b72c707d6c577bceae3b03223
 | ','
     { COMMA }
 | '='
