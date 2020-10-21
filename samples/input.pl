@@ -112,6 +112,10 @@ free_variables_cps(Tail(rs,e),k,t) :- free_variables_cps(e,k,t).
 free_variables_cps(GetTup(idx,e2),k,t) :- free_variables_cps(e2,k,t).
 free_variables_cps(Cons(rs,e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 free_variables_cps(PointerAss(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(IfThen(e1,e2,e3),k,t5) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2),free_variables_cps(e3,k,t3), union(t1,t2,t4), union(t4,t3,t5).
+free_variables_cps(Add(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(Sub(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
+free_variables_cps(Equal(e1,e2),k,t3) :- free_variables_cps(e1,k,t1), free_variables_cps(e2,k,t2), union(t1,t2,t3).
 
 @Compat(TypI, TypI).
 @Compat(TypUnit, TypUnit).
