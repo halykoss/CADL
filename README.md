@@ -1,4 +1,4 @@
-# CADL (Nome provvisorio)
+# CADL
 Compila regole Datalog in Ocaml
 
 ## Table of contents
