@@ -21,6 +21,11 @@ Progetto creato con:
 Per eseguire il progetto:
 
 ```
+apt install ocaml-nox # If you don't want X11 support.
+apt install ocaml
+add-apt-repository ppa:avsm/ppa
+apt update
+apt install opam
 $ opam install dune
 $ opam install ounit2
 $ make
@@ -57,6 +62,19 @@ $ ./cadl <input-file> -i
 ```
 
 Come nel caso precedente il modulo si troverà in '__generated/__'.
+
+Quindi, eseguendo 
+
+```
+$ ./cadl samples/input.pl
+```
+
+si otterrà un type checker per un linguaggio di programmazione che permette di usare funzioni, binding di variabili e comuni strutture dati come tuple e liste. 
+Per eseguire automaticamente una batteria di test su questo type checker basta eseguire 
+```
+$ ./cadl samples/input.pl -t test/input.ml
+```
+modificando _test/input.ml_ si possono aggiungere ulteriori programmi di test.
 
 ## License
 
