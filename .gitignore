@@ -1,0 +1,6 @@
+generated/
+_build/
+.merlin
+lib/lexer.ml 
+lib/parser.ml 
+lib/parser.mli

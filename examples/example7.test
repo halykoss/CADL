@@ -1,0 +1,1 @@
+\x: unit. \y: unit. tail [bool] (cons [bool] (true,[bool]))

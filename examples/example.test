@@ -1,0 +1,1 @@
+let func = \x: int.\y:int. {x,y} in let z = 8 in z |> func

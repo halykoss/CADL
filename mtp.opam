@@ -1,0 +1,9 @@
+opam-version: "1.2"
+name: "mtp"
+version: "1.0.0"
+maintainer: "Federico Pennino <f.pennino@studenti.unipi.it>"
+
+depends: [
+  "dune" {build}
+  "ounit2"
+]
