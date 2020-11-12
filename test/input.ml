@@ -1,7 +1,18 @@
+(* //TODO: Riportare modifiche sul branch *)
 open Generated;;
 open Utilities;;
 open OUnit2;;
 
+let rec printType v = match v with 
+  TypI -> "Int"
+  | TypBool -> "Bool"
+  | TypUnit -> "Unit"
+  | TypF(t1,t2) -> "" ^ printType t1 ^ " -> " ^ printType t2
+  | TypList t -> printType t ^ " list"
+  | TypTu ([]) -> ""
+  | TypTu (x::xs) -> "(" ^ List.fold_left (fun y x -> y ^ " * " ^ (printType x) ) (printType x) xs  ^ ")"
+  | TypRef t -> printType t ^ " ref"
+  ;;
 let value = [
   ("\\x:Bool. let y = 8 in (x,y)",(Fun("x", TypBool,Let("y",Num 8,DeclTup([Var "x";Var "y"])))),(TypF(TypBool, TypTu [TypBool;TypI])));
   ("(\\x:Bool. let y = 8 in (x,y)) true",(App(Fun("x", TypBool,Let("y",Num 8,DeclTup([Var "x";Var "y"]))),Bool(true))),(TypTu [TypBool;TypI]));
@@ -19,7 +30,7 @@ let value = [
 
 
 let rec startTests t = match t with
-    (name,a,b)::xs -> let _ = name |> print_string in let eval = type_check (FunContext.create ()) a in assert_equal b eval;" -> Passed!" |> print_endline;startTests xs
+    (name,a,b)::xs -> let _ = name |> print_string in let eval = type_check (FunContext.create ()) a in assert_equal b eval;" -> Passed! ~ Type : " ^ printType b |> print_endline;startTests xs
   | [] -> ("Test has been successfully passed!" |> print_endline)
 ;;
 
