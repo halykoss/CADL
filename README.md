@@ -39,7 +39,7 @@ $ make clean
 
 ## How to use it?
 
-Per poter generare un semplice type checker il comando è:
+Per poter generare un type checker standard il comando è:
 
 ```
 $ ./cadl <input-file>
@@ -47,7 +47,7 @@ $ ./cadl <input-file>
 
 esempio di **\<input-file\>** è _samples/input.pl_.
 
-Verrà quindi generato un modulo '__generated/__' dentro cui '__generated.ml__' conterrà il codice compilato.
+Verrà quindi generata una cartella '__generated/__' dentro cui '__generated.ml__' conterrà il codice compilato.
 
 Per eseguire una batteria di test basta eseguire il seguente comando:
 
@@ -55,27 +55,37 @@ Per eseguire una batteria di test basta eseguire il seguente comando:
 $ ./cadl <input-file> -t <path-a-file-ml-di-test>
 ```
 
-Se, invece, si volesse generare il modulo da integrare con [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) eseguire:
+Se, invece, si volesse generare il modulo da integrare con [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) bisogna eseguire:
 
 ```
 $ ./cadl <input-file> -i
 ```
 
-Come nel caso precedente il modulo si troverà in '__generated/__'.
+Come nel caso precedente il modulo si troverà in '__generated/generated.ml__', basterà poi clonare [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) e sostiture _src/fun/langspec/funSpecification.ml_ con __generated/generated.ml__(dopo averlo ovviamente rinominato in _funSpecification.ml_). All'interno dei sub-module _incrementalizer/pierce_ e _incrementalizer/spi-calculus_ vi due implementazione già funzionanti (il codice compilato è già all'interno del sottomodulo). Per eseguire una delle due basta entrare in una delle due cartelle ed eseguire 
+```
+$ make
+$ main.native <file-1> <file-2>
+```
 
-Quindi, eseguendo 
+Se si volesse testare un type checker standard, basta eseguire 
 
 ```
 $ ./cadl samples/input.pl
 ```
 
-si otterrà un type checker per un linguaggio di programmazione che permette di usare funzioni, binding di variabili e comuni strutture dati come tuple e liste. 
-Per eseguire automaticamente una batteria di test su questo type checker basta eseguire 
+si otterrà un type checker per un linguaggio di programmazione che permette di usare funzioni, binding di variabili e comuni strutture dati come tuple e liste. Per eseguire automaticamente una batteria di test su questo type checker basta eseguire 
 ```
 $ ./cadl samples/input.pl -t test/input.ml
 ```
 modificando _test/input.ml_ si possono aggiungere ulteriori programmi di test.
 
+Nel caso in cui si volesse testare un'implementazione con parser e lexer basta eseguire il comando 
+
+```
+$ ./cadl samples/input.pl
+```
+
+e copiare la cartella _generated/_ ottenuta in un clone di questa [repo](https://github.com/freek9807/CADL/tree/standard-pierce).
 ## License
 
 [GNU GENERAL PUBLIC LICENSE](https://github.com/freek9807/TSP-DP-PARALLEL/blob/master/LICENSE) © [Federico Pennino](mailto:federico@freek.io?subject=[GitHub]%20TSP%20CPP)
