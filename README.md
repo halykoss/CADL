@@ -61,7 +61,7 @@ Se, invece, si volesse generare il modulo da integrare con [Incremental Type Che
 $ ./cadl <input-file> -i
 ```
 
-Come nel caso precedente il modulo si troverà in '__generated/generated.ml__', basterà poi clonare [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) e sostiture _src/fun/langspec/funSpecification.ml_ con __generated/generated.ml__(dopo averlo ovviamente rinominato in _funSpecification.ml_). All'interno dei sub-module _incrementalizer/pierce_ e _incrementalizer/spi-calculus_ vi due implementazione già funzionanti (il codice compilato è già all'interno del sottomodulo). Per eseguire una delle due basta entrare in una delle due cartelle ed eseguire 
+Come nel caso precedente il modulo si troverà in '__generated/generated.ml__', basterà poi clonare [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) e sostiture _src/fun/langspec/funSpecification.ml_ con __generated/generated.ml__ (dopo averlo ovviamente rinominato in _funSpecification.ml_). All'interno dei sub-module _incrementalizer/pierce_ e _incrementalizer/spi-calculus_ vi due implementazione già funzionanti (il codice compilato è già all'interno del sottomodulo). Per eseguire una delle due basta entrare in una delle due cartelle ed eseguire 
 ```
 $ make
 $ main.native <file-1> <file-2>
