@@ -1,5 +1,5 @@
 # CADL
-Compila regole Datalog in Ocaml
+My bachelor thesis: a compiler from Datalog rules to OCaml type checker (standard or incremental) 
 
 ## Table of contents
 * [General info](#general-info)
@@ -9,16 +9,16 @@ Compila regole Datalog in Ocaml
 * [License](#license)
 
 ## General info
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce nec dapibus felis. Mauris enim nisl, dictum vel libero nec, ullamcorper auctor nibh. Pellentesque id leo sit amet massa tincidunt ultricies.
+The aim of CADL is to simplify the writing of a type checker (standard or incremental). You can input Datalog rules and CADL will output an OCaml type checker. 
 	
 ## Requirements
-Progetto creato con:
+CADL needs:
 * OCaml : 4.08.1
 * Dune : 2.7.1
 * OUnit2 : 2.2.3
 	
 ## Setup
-Per eseguire il progetto:
+To run this project you need to install:
 
 ```
 apt install ocaml-nox # If you don't want X11 support.
@@ -31,7 +31,7 @@ $ opam install ounit2
 $ make
 ```
 
-Per ripulire l'albero del progetto:
+To clean the project tree:
 
 ```
 $ make clean
@@ -39,53 +39,29 @@ $ make clean
 
 ## How to use it?
 
-Per poter generare un type checker standard il comando è:
+You can generate a standard type checker with:
 
 ```
 $ ./cadl <input-file>
 ```
 
-esempio di **\<input-file\>** è _samples/input.pl_.
+examples for **\<input-file\>** are _samples/input.pl_ and _samples/spi.pl_.
 
-Verrà quindi generata una cartella '__generated/__' dentro cui '__generated.ml__' conterrà il codice compilato.
+The compiled code will be located in '__generated.ml__' file, inside '__generated/__' module.
 
-Per eseguire una batteria di test basta eseguire il seguente comando:
+You can run your tests with:
 
 ```
-$ ./cadl <input-file> -t <path-a-file-ml-di-test>
+$ ./cadl <input-file> -t <path-to-test-file-ml>
 ```
 
-Se, invece, si volesse generare il modulo da integrare con [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) bisogna eseguire:
+If you want to generate a module for [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml), you need to run:
 
 ```
 $ ./cadl <input-file> -i
 ```
 
-Come nel caso precedente il modulo si troverà in '__generated/generated.ml__', basterà poi clonare [Incremental Type Checking of MinCaml](https://github.com/mcaos/incremental-mincaml) e sostiture _src/fun/langspec/funSpecification.ml_ con __generated/generated.ml__ (dopo averlo ovviamente rinominato in _funSpecification.ml_). All'interno dei sub-module _incrementalizer/pierce_ e _incrementalizer/spi-calculus_ vi sono due implementazione già funzionanti (il codice compilato è già all'interno del sottomodulo). Per eseguire una delle due basta entrare in una delle due cartelle ed eseguire 
-```
-$ make
-$ main.native <file-1> <file-2>
-```
-I file di test si trovano in _src/fun/examples/_ dentro i sottomoduli.
-Se si volesse testare un type checker standard, basta eseguire 
-
-```
-$ ./cadl samples/input.pl
-```
-
-si otterrà un type checker per un linguaggio di programmazione che permette di usare funzioni, binding di variabili e comuni strutture dati come tuple e liste. Per eseguire automaticamente una batteria di test su questo type checker basta eseguire 
-```
-$ ./cadl samples/input.pl -t test/input.ml
-```
-modificando _test/input.ml_ si possono aggiungere ulteriori programmi di test.
-
-Nel caso in cui si volesse testare un'implementazione con parser e lexer basta eseguire il comando 
-
-```
-$ ./cadl samples/input.pl
-```
-
-e copiare la cartella _generated/_ ottenuta in un clone di questa [repo](https://github.com/freek9807/CADL/tree/standard-pierce).
+examples of working CADL generated module are [Pierce](https://github.com/freek9807/CADL/tree/incrementalizer-pierce) and [Spi calculus](https://github.com/freek9807/CADL/tree/incrementalizer-spi-calculus).
 ## License
 
 [GNU GENERAL PUBLIC LICENSE](https://github.com/freek9807/TSP-DP-PARALLEL/blob/master/LICENSE) © [Federico Pennino](mailto:federico@freek.io?subject=[GitHub]%20TSP%20CPP)
